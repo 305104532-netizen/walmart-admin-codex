@@ -11,6 +11,7 @@ import Prescreen from './pages/register/Prescreen'
 import RegisterRemind from './pages/register/RegisterRemind'
 import RegisterTask from './pages/register/RegisterTask'
 // 成长中心
+import GrowthSellers from './pages/growth/GrowthSellers'
 import GrowthScore from './pages/growth/GrowthScore'
 import GrowthPersona from './pages/growth/GrowthPersona'
 import GrowthTags from './pages/growth/GrowthTags'
@@ -74,6 +75,7 @@ export const router = createBrowserRouter([
       { path: 'register/remind', element: <RegisterRemind /> },
       { path: 'register/task', element: <RegisterTask /> },
 
+      { path: 'growth/sellers', element: <GrowthSellers /> },
       { path: 'growth/score', element: <GrowthScore /> },
       { path: 'growth/persona', element: <GrowthPersona /> },
       { path: 'growth/tags', element: <GrowthTags /> },

@@ -29,6 +29,7 @@ export const menuConfig: MenuNode[] = [
   {
     key: 'growth', label: '成长中心', icon: createElement(RiseOutlined),
     children: [
+      { key: '/growth/sellers', label: '卖家管理' },
       { key: '/growth/score', label: '评分体系配置' },
       { key: '/growth/persona', label: '用户画像管理' },
       { key: '/growth/tags', label: '标签管理' },
