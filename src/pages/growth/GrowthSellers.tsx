@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react'
 import { AimOutlined, BookOutlined, CalendarOutlined, EyeOutlined, SearchOutlined, ShopOutlined, TagsOutlined, TeamOutlined, UserOutlined } from '@ant-design/icons'
-import { Avatar, Button, Card, Col, Descriptions, Drawer, Empty, Input, Progress, Row, Select, Space, Statistic, Table, Tabs, Tag, Timeline, Typography } from 'antd'
+import { Alert, Avatar, Button, Card, Col, Descriptions, Drawer, Empty, Input, Progress, Row, Select, Space, Statistic, Table, Tabs, Tag, Timeline, Typography } from 'antd'
 import { GROWTH_SELLERS } from '../../models/growthSellers'
 import type { GrowthSeller, SellerPersona, SellerRegistrationStatus, SellerSite, SellerTag } from '../../models/growthSellers'
+import { getStandardTemplate, loadRegistrationTemplate } from '../../models/registrationTemplates'
+import type { RegistrationField } from '../../models/registrationTemplates'
 
 const STATUS: Record<SellerRegistrationStatus, { label: string; color: string }> = {
   unregistered: { label: '未入驻', color: 'default' }, pending: { label: '审核中', color: 'gold' }, online: { label: '已上线', color: 'green' },
@@ -25,6 +27,10 @@ export default function GrowthSellers() {
   const [keyword, setKeyword] = useState('')
   const [detail, setDetail] = useState<GrowthSeller>()
   const [detailTab, setDetailTab] = useState('portrait')
+  const registrationTemplate = useMemo(() => {
+    try { return loadRegistrationTemplate().published }
+    catch { return { steps: getStandardTemplate(), version: 1, updatedAt: null, updatedBy: '系统预设' } }
+  }, [])
 
   const filtered = useMemo(() => GROWTH_SELLERS.filter((seller) => (status === 'all' || seller.registrationStatus === status)
     && (!site || seller.sites.includes(site)) && (!persona || seller.persona === persona) && (!manager || seller.manager === manager)
@@ -51,6 +57,12 @@ export default function GrowthSellers() {
     ...(detail.registrationStatus === 'pending' ? [{ color: 'blue', content: '当前 · 五要素及资质材料审核中' }] : []),
     ...(detail.onlineAt ? [{ color: 'green', content: `${detail.onlineAt} · 审核通过，店铺正式上线` }] : [{ color: 'gray', content: '店铺上线' }]),
   ] : []
+  const registrationFieldColumns = detail ? [
+    { title: '字段', key: 'field', width: 235, render: (_: unknown, field: RegistrationField) => <div><Space size={4}><Typography.Text strong>{field.label}</Typography.Text>{field.sensitive && <Tag color="red">敏感</Tag>}</Space><br /><Typography.Text type="secondary" style={{ fontSize: 12 }}>{field.en}</Typography.Text></div> },
+    { title: '卖家填写内容', key: 'value', render: (_: unknown, field: RegistrationField) => field.applicableSites.includes(detail.primarySite) ? <Typography.Text>{registrationFieldValue(detail, field.key)}</Typography.Text> : <Typography.Text type="secondary">不适用于当前 {detail.primarySite} 站申请</Typography.Text> },
+    { title: '适用站点', dataIndex: 'applicableSites', width: 150, render: (sites: string[]) => <Space size={[0, 4]} wrap>{sites.map((value) => <Tag key={value} color={value === detail.primarySite ? 'blue' : 'default'}>{value}</Tag>)}</Space> },
+    { title: '规则', key: 'rule', width: 180, render: (_: unknown, field: RegistrationField) => <Space orientation="vertical" size={2}><Tag color={field.required ? 'gold' : 'default'}>{field.required ? '必填' : '选填'}</Tag>{field.showIf && <Typography.Text type="secondary" style={{ fontSize: 12 }}>条件：{field.showIf}</Typography.Text>}</Space> },
+  ] : []
 
   const portrait = detail ? <Space orientation="vertical" size={16} style={{ width: '100%' }}>
     <AlertCard seller={detail} />
@@ -70,13 +82,19 @@ export default function GrowthSellers() {
 
   const registration = detail ? <Space orientation="vertical" size={16} style={{ width: '100%' }}>
     <Row gutter={[16, 16]}><Col xs={12} md={6}><Card size="small"><Statistic title="入驻状态" value={STATUS[detail.registrationStatus].label} /></Card></Col><Col xs={12} md={6}><Card size="small"><Statistic title="申请进度" value={detail.registrationProgress} suffix="%" /></Card></Col><Col xs={12} md={6}><Card size="small"><Statistic title="五要素5FA" value={detail.fiveFaStatus} /></Card></Col><Col xs={12} md={6}><Card size="small"><Statistic title="申请站点" value={detail.primarySite} /></Card></Col></Row>
-    <Card size="small" title="入驻档案"><Descriptions bordered size="small" column={{ xs: 1, md: 2 }} items={[
+    <Card size="small" title="入驻档案 · 基础与业务归属"><Descriptions bordered size="small" column={{ xs: 1, md: 2 }} items={[
       { key: 'company', label: '企业主体', children: detail.legalEntity }, { key: 'country', label: '注册国家/地区', children: detail.country },
       { key: 'name', label: '联系人', children: detail.name }, { key: 'phone', label: '手机号', children: detail.phone },
       { key: 'email', label: '邮箱', children: detail.email }, { key: 'form', label: '入驻表单', children: detail.formVersion },
       { key: 'source', label: '入驻来源', children: detail.source }, { key: 'activity', label: '所属活动', children: detail.activity ?? '—' },
       { key: 'manager', label: '所属经理', children: detail.manager }, { key: 'bind', label: '线索绑定日期', children: detail.bindDate },
     ]} /></Card>
+    <Alert type="info" showIcon title={`完整入驻表单字段 · ${registrationTemplate.steps.reduce((total, step) => total + step.fields.length, 0)} 项`}
+      description={`按当前已发布标准表单 v${registrationTemplate.version} 展示 US、CA、MX 三站字段并集；蓝色站点为该卖家当前申请站点，敏感信息已脱敏。`} />
+    {registrationTemplate.steps.map((step, index) => <Card key={step.id} size="small" title={`${index + 1}. ${step.name}`} extra={`${step.fields.length} 个字段`}>
+      {step.fields.length > 0 ? <Table rowKey="key" size="small" pagination={false} columns={registrationFieldColumns} dataSource={step.fields} scroll={{ x: 850 }} />
+        : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="确认提交步骤不包含可填写字段" />}
+    </Card>)}
     <Card size="small" title="入驻进度"><Timeline items={registrationTimeline} /></Card>
   </Space> : null
 
@@ -133,6 +151,48 @@ export default function GrowthSellers() {
 
 function channelFor(seller: GrowthSeller): string {
   return seller.contentViews30 >= seller.activitiesJoined * 5 ? '卖家大学' : '活动中心'
+}
+
+function registrationFieldValue(seller: GrowthSeller, key: string): string {
+  const sequence = Number.parseInt(seller.id.replace(/\D/g, ''), 10) || 1
+  const submitted = seller.registrationStatus !== 'unregistered'
+  const leadFields = new Set(['contactName', 'regionCode', 'phone', 'email', 'companyName', 'operationLocation', 'regLocation', 'category', 'bdManager'])
+  if (!submitted && !leadFields.has(key)) return key.toLowerCase().includes('screenshot') ? '未上传' : '未填写'
+  const hasUsAccount = seller.sites.includes('US')
+  const hasMxExperience = seller.sites.includes('MX')
+  const values: Record<string, string> = {
+    contactName: seller.name,
+    regionCode: '+86 中国大陆',
+    phone: seller.phone,
+    email: seller.email,
+    companyName: seller.company,
+    operationLocation: ['深圳市', '广州市', '杭州市', '上海市'][sequence % 4],
+    regLocation: '中国大陆',
+    brand: `${seller.company.slice(0, 4)}品牌`,
+    category: seller.category,
+    subCategory: `${seller.category}细分品类`,
+    annualGMV: ['100万–500万美元', '500万–1000万美元', '1000万美元以上'][sequence % 3],
+    bdManager: seller.manager,
+    otherPlatforms: ['Amazon、eBay', 'Amazon、Shopee', 'TikTok Shop、Amazon'][sequence % 3],
+    storeLink: `https://example.com/store/${seller.id}`,
+    sellerId: seller.sellerId ?? `CN-${String(600000 + sequence * 137)}`,
+    gmvScreenshot: '已上传（GMV后台截图）',
+    wfsSupport: sequence % 2 === 0 ? '是' : '否',
+    hasUSAccount: hasUsAccount ? '是' : '否',
+    usPid: hasUsAccount ? seller.sellerId ?? `US-${String(300000 + sequence * 97)}` : '条件未触发，未填写',
+    mxExperience: hasMxExperience ? '是' : '否',
+    mxGmvScreenshot: hasMxExperience ? '已上传（墨西哥GMV截图）' : '条件未触发，未上传',
+    mxPlatformName: hasMxExperience ? 'Mercado Libre' : '条件未触发，未填写',
+    mxPlatformUrl: hasMxExperience ? `https://example.com/mx-store/${seller.id}` : '条件未触发，未填写',
+    mxSellerId: hasMxExperience ? `MX-${String(400000 + sequence * 83)}` : '条件未触发，未填写',
+    rfcTax: hasMxExperience && sequence % 2 === 0 ? '是' : '否',
+    legalRepName: seller.name,
+    legalRepPhone: seller.phone,
+    legalCompanyName: seller.legalEntity,
+    legalCompanyTaxId: `91************${String(4200 + sequence).slice(-4)}`,
+    legalRepIdNumber: `31************${String(7800 + sequence).slice(-4)}`,
+  }
+  return values[key] ?? '未填写'
 }
 
 function AlertCard({ seller }: { seller: GrowthSeller }) {
