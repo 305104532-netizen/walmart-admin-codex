@@ -11,7 +11,7 @@ export const FORM_VIEW_PERMISSION = 'register.form.view'
 const STORAGE_KEY = 'walmart-admin-role-permissions-v1'
 const PREVIEW_USER_KEY = 'walmart-admin-preview-user-v1'
 const CHANGE_EVENT = 'walmart-admin-access-change'
-const DEVELOPMENT_PREVIEW = import.meta.env.DEV
+export const IDENTITY_PREVIEW_ENABLED = import.meta.env.DEV || import.meta.env.VITE_ENABLE_IDENTITY_PREVIEW === 'true'
 type PreviewIdentity = Readonly<Pick<PreviewUser, 'id' | 'name' | 'role'>>
 export const PREVIEW_USERS: readonly PreviewIdentity[] = Object.freeze([
   Object.freeze({ id: 'preview-admin', name: '管理员', role: 'admin' as const }),
@@ -78,8 +78,8 @@ export function readRolePermissions(): RolePermissions {
 
 export function getCurrentAdmin(): PreviewUser {
   try {
-    // 当前项目仅有本地演示身份。生产构建忽略开发预览选择，不接管真实登录。
-    const selectedId = DEVELOPMENT_PREVIEW ? window.sessionStorage.getItem(PREVIEW_USER_KEY) : null
+    // 当前项目仅有演示身份；只有开发环境或明确启用的演示构建允许切换。
+    const selectedId = IDENTITY_PREVIEW_ENABLED ? window.sessionStorage.getItem(PREVIEW_USER_KEY) : null
     const identity = PREVIEW_USERS.find((user) => user.id === (selectedId ?? 'preview-admin'))
     if (!identity) throw new Error('Unknown preview identity')
     const permissions = readRolePermissions()[identity.role]
@@ -91,7 +91,7 @@ export function getCurrentAdmin(): PreviewUser {
 }
 
 export function setPreviewUser(id: string): void {
-  if (!DEVELOPMENT_PREVIEW) throw new Error('身份切换仅用于本地开发预览。')
+  if (!IDENTITY_PREVIEW_ENABLED) throw new Error('身份切换仅用于演示预览。')
   if (typeof id !== 'string' || !PREVIEW_USERS.some((user) => user.id === id)) {
     throw new Error('请选择预设的本地演示账户。')
   }
@@ -137,7 +137,7 @@ export function saveRolePermissions(role: PreviewRole, permissions: string[]): v
 export function subscribeAdminAccess(listener: () => void): () => void {
   if (typeof window === 'undefined') return () => {}
   const onStorage = (event: StorageEvent) => {
-    if (event.key === STORAGE_KEY || event.key === null || (DEVELOPMENT_PREVIEW && event.key === PREVIEW_USER_KEY)) listener()
+    if (event.key === STORAGE_KEY || event.key === null || (IDENTITY_PREVIEW_ENABLED && event.key === PREVIEW_USER_KEY)) listener()
   }
   window.addEventListener(CHANGE_EVENT, listener)
   window.addEventListener('storage', onStorage)

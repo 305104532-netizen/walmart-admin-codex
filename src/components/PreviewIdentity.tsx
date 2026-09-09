@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { Alert, Select, Space, Typography } from 'antd'
-import { PREVIEW_USERS, setPreviewUser, useCurrentAdmin } from '../models/adminAccess'
+import { IDENTITY_PREVIEW_ENABLED, PREVIEW_USERS, setPreviewUser, useCurrentAdmin } from '../models/adminAccess'
 
 export default function PreviewIdentity() {
-  return import.meta.env.DEV ? <DevelopmentPreviewIdentity /> : null
+  return IDENTITY_PREVIEW_ENABLED ? <DevelopmentPreviewIdentity /> : null
 }
 
 function DevelopmentPreviewIdentity() {
