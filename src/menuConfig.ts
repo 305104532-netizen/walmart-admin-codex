@@ -90,6 +90,7 @@ export const menuConfig: MenuNode[] = [
   {
     key: 'settings', label: '系统设置', icon: createElement(SettingOutlined),
     children: [
+      { key: '/settings/organization', label: '组织架构管理' },
       { key: '/settings/permission', label: '权限管理' },
       { key: '/settings/commission', label: '佣金公式管理' },
       { key: '/settings/logs', label: '操作日志' },

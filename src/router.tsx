@@ -51,6 +51,7 @@ import ResPopup from './pages/resource/ResPopup'
 import ResEditor from './pages/resource/ResEditor'
 import ResPages from './pages/resource/ResPages'
 // 系统设置
+import SetOrganization from './pages/settings/SetOrganization'
 import SetPermission from './pages/settings/SetPermission'
 import SetTracking from './pages/settings/SetTracking'
 import SetApi from './pages/settings/SetApi'
@@ -115,6 +116,7 @@ export const router = createBrowserRouter([
       { path: 'resource/editor', element: <ResEditor /> },
       { path: 'resource/pages', element: <ResPages /> },
 
+      { path: 'settings/organization', element: <SetOrganization /> },
       { path: 'settings/permission', element: <SetPermission /> },
       { path: 'settings/tracking', element: <SetTracking /> },
       { path: 'settings/api', element: <SetApi /> },
