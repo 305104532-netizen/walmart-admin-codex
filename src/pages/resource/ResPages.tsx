@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import type { ReactNode } from 'react'
+import { Fragment, useMemo, useState } from 'react'
+import type { DragEvent, ReactNode } from 'react'
 import dayjs from 'dayjs'
 import {
   Alert, Button, Card, Col, DatePicker, Descriptions, Divider, Drawer, Empty, Form, Image, Input,
@@ -18,6 +18,9 @@ import type { ChannelParam, MiniProgramPage, TempPageStatus } from '../../models
 import './ResPages.css'
 
 type BlockType = 'image' | 'video' | 'banner' | 'text' | 'hotspot' | 'subscribe'
+
+const COMPONENT_DRAG_TYPE = 'application/x-walmart-page-component'
+const BLOCK_DRAG_TYPE = 'application/x-walmart-page-block'
 
 interface PageBlock {
   id: number
@@ -115,6 +118,9 @@ export default function ResPages() {
   const [builderOpen, setBuilderOpen] = useState(false)
   const [blocks, setBlocks] = useState<PageBlock[]>([])
   const [selectedId, setSelectedId] = useState<number>()
+  const [draggingId, setDraggingId] = useState<number>()
+  const [draggingType, setDraggingType] = useState<BlockType>()
+  const [dropIndex, setDropIndex] = useState<number>()
   const [builderTab, setBuilderTab] = useState('page')
   const [editForm] = Form.useForm()
   const [builderForm] = Form.useForm()
@@ -205,6 +211,17 @@ export default function ResPages() {
     setBuilderTab('component')
   }
 
+  const insertBlock = (type: BlockType, index: number, image?: string) => {
+    const block = newBlock(type, image)
+    setBlocks((current) => {
+      const next = [...current]
+      next.splice(Math.max(0, Math.min(index, next.length)), 0, block)
+      return next
+    })
+    setSelectedId(block.id)
+    setBuilderTab('component')
+  }
+
   const updateBlock = (patch: Partial<PageBlock>) => {
     if (!selectedId) return
     setBlocks((current) => current.map((block) => block.id === selectedId ? { ...block, ...patch } : block))
@@ -220,6 +237,49 @@ export default function ResPages() {
       next.splice(target, 0, moved)
       return next
     })
+  }
+
+  const moveBlockTo = (id: number, insertionIndex: number) => {
+    setBlocks((current) => {
+      const sourceIndex = current.findIndex((block) => block.id === id)
+      if (sourceIndex < 0) return current
+      const next = [...current]
+      const [moved] = next.splice(sourceIndex, 1)
+      const targetIndex = sourceIndex < insertionIndex ? insertionIndex - 1 : insertionIndex
+      next.splice(Math.max(0, Math.min(targetIndex, next.length)), 0, moved)
+      return next
+    })
+    setSelectedId(id)
+    setBuilderTab('component')
+  }
+
+  const finishDrag = () => {
+    setDraggingId(undefined)
+    setDraggingType(undefined)
+    setDropIndex(undefined)
+  }
+
+  const dropOnCanvas = (event: DragEvent<HTMLDivElement>, index: number) => {
+    event.preventDefault()
+    event.stopPropagation()
+    const blockId = Number(event.dataTransfer.getData(BLOCK_DRAG_TYPE))
+    const componentType = event.dataTransfer.getData(COMPONENT_DRAG_TYPE) as BlockType
+    if (Number.isFinite(blockId) && blockId > 0) {
+      moveBlockTo(blockId, index)
+      finishDrag()
+      return
+    }
+    if (PALETTE.some((item) => item.type === componentType)) {
+      insertBlock(componentType, index)
+      finishDrag()
+      return
+    }
+    const imageFiles = Array.from(event.dataTransfer.files).filter((file) => file.type.startsWith('image/'))
+    if (imageFiles.length) {
+      imageFiles.forEach((file, offset) => readImage(file, (value) => insertBlock('image', index + offset, value), messageApi.error))
+      messageApi.success(`已拖入 ${imageFiles.length} 张切图`)
+    }
+    finishDrag()
   }
 
   const removeBlock = (id: number) => {
@@ -347,7 +407,7 @@ export default function ResPages() {
               <Button block type="dashed" icon={<PlusOutlined />} onClick={() => add({ key: '', value: '', note: '' })}>添加渠道参数</Button>
             </Space>}</Form.List>
           </> },
-          { key: 'share', label: '分享卡片', children: <Row gutter={20}><Col span={14}><Form.Item label="分享小程序卡片标题" name="shareTitle" rules={[{ required: true, message: '请输入分享标题' }]}><Input.TextArea rows={3} maxLength={45} showCount /></Form.Item><Form.Item label="卡片封面图" name="shareCover"><ImageUpload label="分享卡片封面" maxMB={5} /></Form.Item></Col><Col span={10}><ShareCard title={editShareTitle || editing?.title || ''} cover={editShareCover} /></Col></Row> },
+          { key: 'share', label: '分享卡片', children: <Row gutter={[20, 20]}><Col xs={24} md={14}><Form.Item label="分享小程序卡片标题" name="shareTitle" rules={[{ required: true, message: '请输入分享标题' }]}><Input.TextArea rows={3} maxLength={45} showCount /></Form.Item><Form.Item label="卡片封面图" name="shareCover"><ImageUpload label="分享卡片封面" maxMB={5} /></Form.Item></Col><Col xs={24} md={10}><ShareCard title={editShareTitle || editing?.title || ''} cover={editShareCover} /></Col></Row> },
         ]} />
       </Form>
     </Drawer>
@@ -364,12 +424,14 @@ export default function ResPages() {
       extra={<Space><Button onClick={() => void saveNewPage(true)}>保存草稿</Button><Button type="primary" onClick={() => void saveNewPage(false)}>创建并发布</Button></Space>} styles={{ body: { padding: 0, background: '#F3F5F8' } }}>
       <div className="page-builder">
         <aside className="builder-palette">
-          <div className="builder-panel-title"><div><strong>组件库</strong><span>点击添加到页面</span></div></div>
+          <div className="builder-panel-title"><div><strong>组件库</strong><span>拖拽组件到手机画布</span></div><Tag color="blue">拖拽创建</Tag></div>
           <Upload.Dragger accept="image/*" multiple showUploadList={false} beforeUpload={(file) => readImage(file, (value) => addBlock('image', value), messageApi.error)} className="slice-uploader">
             <p className="ant-upload-drag-icon"><CloudUploadOutlined /></p><p className="upload-main">上传切图生成页面</p><p className="upload-help">支持多选，每张切图自动生成图片组件</p>
           </Upload.Dragger>
           <Divider titlePlacement="start" plain>基础组件</Divider>
-          <div className="palette-grid">{PALETTE.map((item) => <button key={item.type} type="button" className="palette-item" onClick={() => addBlock(item.type)}><span>{item.icon}</span><strong>{item.label}</strong><small>{item.help}</small></button>)}</div>
+          <div className="palette-grid">{PALETTE.map((item) => <button key={item.type} type="button" draggable className={`palette-item${draggingType === item.type ? ' is-dragging' : ''}`}
+            onDragStart={(event) => { event.dataTransfer.effectAllowed = 'copy'; event.dataTransfer.setData(COMPONENT_DRAG_TYPE, item.type); setDraggingType(item.type); setDraggingId(undefined) }} onDragEnd={finishDrag}
+            onClick={() => addBlock(item.type)}><span>{item.icon}</span><strong>{item.label}</strong><small>{item.help}</small><em>拖入画布</em></button>)}</div>
         </aside>
 
         <main className="builder-stage">
@@ -377,12 +439,23 @@ export default function ResPages() {
           <div className="phone-shell">
             <div className="phone-status"><span>9:41</span><span>··· ◉</span></div>
             <div className="phone-nav"><span>‹</span><strong>{builderTitle}</strong><span>•••</span></div>
-            <div className="phone-canvas">
-              {!blocks.length && <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={<span>上传切图或从左侧添加组件<br />开始搭建临时页面</span>} />}
-              {blocks.map((block, index) => <div key={block.id} className={'phone-block ' + (selectedId === block.id ? 'selected' : '')} role="group" tabIndex={0} aria-label={`选择${block.label}组件`} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setSelectedId(block.id); setBuilderTab('component') } }} onClick={() => { setSelectedId(block.id); setBuilderTab('component') }}>
-                <div className="phone-block-label">{index + 1} · {block.label}</div><PhoneBlock block={block} />
-                {selectedId === block.id && <div className="phone-block-actions"><Button size="small" type="text" icon={<ArrowUpOutlined />} disabled={index === 0} aria-label="上移组件" onClick={(event) => { event.stopPropagation(); moveBlock(block.id, -1) }} /><Button size="small" type="text" icon={<ArrowDownOutlined />} disabled={index === blocks.length - 1} aria-label="下移组件" onClick={(event) => { event.stopPropagation(); moveBlock(block.id, 1) }} /><Button size="small" type="text" danger icon={<DeleteOutlined />} aria-label="删除组件" onClick={(event) => { event.stopPropagation(); removeBlock(block.id) }} /></div>}
-              </div>)}
+            <div className={`phone-canvas${dropIndex !== undefined ? ' is-receiving' : ''}`}
+              onDragEnter={(event) => { event.preventDefault(); if (event.currentTarget === event.target) setDropIndex(blocks.length) }}
+              onDragOver={(event) => { event.preventDefault(); if (event.currentTarget === event.target) setDropIndex(blocks.length) }}
+              onDrop={(event) => dropOnCanvas(event, blocks.length)}>
+              <CanvasDropZone index={0} active={dropIndex === 0} onDragOver={setDropIndex} onDrop={dropOnCanvas} />
+              {!blocks.length && <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={<span>将左侧组件或本地切图拖到这里<br />开始搭建临时页面</span>} />}
+              {blocks.map((block, index) => <Fragment key={block.id}>
+                <div className={`phone-block${selectedId === block.id ? ' selected' : ''}${draggingId === block.id ? ' is-dragging' : ''}`} draggable role="group" tabIndex={0} aria-label={`选择并拖动${block.label}`}
+                  onDragStart={(event) => { event.stopPropagation(); event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData(BLOCK_DRAG_TYPE, String(block.id)); setDraggingId(block.id); setDraggingType(undefined); setSelectedId(block.id) }} onDragEnd={finishDrag}
+                  onDragOver={(event) => { event.preventDefault(); event.stopPropagation(); const rect = event.currentTarget.getBoundingClientRect(); setDropIndex(event.clientY < rect.top + rect.height / 2 ? index : index + 1) }}
+                  onDrop={(event) => { const rect = event.currentTarget.getBoundingClientRect(); dropOnCanvas(event, event.clientY < rect.top + rect.height / 2 ? index : index + 1) }}
+                  onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setSelectedId(block.id); setBuilderTab('component') } }} onClick={() => { setSelectedId(block.id); setBuilderTab('component') }}>
+                  <div className="phone-block-label"><span className="drag-grip" aria-hidden="true">⠿</span>{index + 1} · {block.label}</div><PhoneBlock block={block} />
+                  {selectedId === block.id && <div className="phone-block-actions"><Button size="small" type="text" icon={<ArrowUpOutlined />} disabled={index === 0} aria-label="上移组件" onClick={(event) => { event.stopPropagation(); moveBlock(block.id, -1) }} /><Button size="small" type="text" icon={<ArrowDownOutlined />} disabled={index === blocks.length - 1} aria-label="下移组件" onClick={(event) => { event.stopPropagation(); moveBlock(block.id, 1) }} /><Button size="small" type="text" danger icon={<DeleteOutlined />} aria-label="删除组件" onClick={(event) => { event.stopPropagation(); removeBlock(block.id) }} /></div>}
+                </div>
+                <CanvasDropZone index={index + 1} active={dropIndex === index + 1} onDragOver={setDropIndex} onDrop={dropOnCanvas} />
+              </Fragment>)}
             </div>
           </div>
         </main>
@@ -407,7 +480,14 @@ export default function ResPages() {
 }
 
 function ShareCard({ title, cover }: { title: string; cover?: string }) {
-  return <div className="share-card-preview"><div className="share-card-user"><span>W</span><Typography.Text type="secondary">沃尔玛卖家服务</Typography.Text></div><Typography.Text strong ellipsis={{ tooltip: title }}>{title || '分享卡片标题'}</Typography.Text>{cover ? <Image src={cover} alt="分享卡片封面" preview={false} /> : <div className="share-cover-empty"><PictureOutlined /><span>卡片封面预览</span></div>}<div className="share-card-footer"><ShopOutlined /> 小程序</div></div>
+  return <div className="share-card-preview"><div className="share-card-user"><span className="share-card-avatar">W</span><Typography.Text type="secondary">沃尔玛卖家服务</Typography.Text></div><Typography.Paragraph className="share-card-title" strong ellipsis={{ rows: 2, tooltip: title }}>{title || '分享卡片标题'}</Typography.Paragraph>{cover ? <Image src={cover} alt="分享卡片封面" preview={false} /> : <div className="share-cover-empty"><PictureOutlined /><span>卡片封面预览</span></div>}<div className="share-card-footer"><ShopOutlined /> 小程序</div></div>
+}
+
+function CanvasDropZone({ index, active, onDragOver, onDrop }: { index: number; active: boolean; onDragOver: (index: number) => void; onDrop: (event: DragEvent<HTMLDivElement>, index: number) => void }) {
+  return <div className={`canvas-drop-zone${active ? ' is-active' : ''}`} aria-hidden="true"
+    onDragEnter={(event) => { event.preventDefault(); event.stopPropagation(); onDragOver(index) }}
+    onDragOver={(event) => { event.preventDefault(); event.stopPropagation(); event.dataTransfer.dropEffect = event.dataTransfer.types.includes(BLOCK_DRAG_TYPE) ? 'move' : 'copy'; onDragOver(index) }}
+    onDrop={(event) => onDrop(event, index)}><span>放置到这里</span></div>
 }
 
 function BlockInspector({ block, update, notify, fail }: { block: PageBlock; update: (patch: Partial<PageBlock>) => void; notify: (text: string) => void; fail: (text: string) => void }) {
