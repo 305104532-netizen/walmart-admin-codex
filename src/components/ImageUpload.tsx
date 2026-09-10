@@ -94,6 +94,6 @@ export default function ImageUpload({ value = '', onChange, label = '图片', ma
       {value && <Button icon={<DeleteOutlined />} disabled={busy} aria-label={`删除${label}`} onClick={() => { onChange?.(''); setError('') }}>删除</Button>}
     </Space>
     <Typography.Text type="secondary">支持 PNG、JPG、JPEG、WEBP、GIF，最大 {limit} MB</Typography.Text>
-    {error && <div role="alert"><Alert type="error" showIcon title={error} /></div>}
+    {error && <div role="alert" aria-live="assertive"><Alert type="error" showIcon title={error} /></div>}
   </Space>
 }

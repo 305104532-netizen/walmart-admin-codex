@@ -63,7 +63,7 @@ function ActivityDetailContent({ activityId }: { activityId?: string }) {
   }, [activityId, demo, revision])
 
   const back = <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/activity/list')}>返回活动列表</Button>
-  if (loading) return <><div style={{ marginBottom: 24 }}>{back}</div><div role="status" aria-label="正在加载活动详情" style={{ padding: 80, textAlign: 'center' }}><Spin size="large" /><div style={{ marginTop: 16 }}>正在加载活动详情…</div></div></>
+  if (loading) return <><div style={{ marginBottom: 24 }}>{back}</div><div role="status" aria-live="polite" aria-label="正在加载活动详情" style={{ padding: 80, textAlign: 'center' }}><Spin size="large" /><div style={{ marginTop: 16 }}>正在加载活动详情…</div></div></>
   if (error) return <Result status="error" title="无法读取活动详情" subTitle={error} extra={<Space>{back}<Button type="primary" onClick={reload}>重试</Button></Space>} />
   if (!record) return <Result status="404" title="未找到活动" subTitle="该活动不存在，或尚未保存在当前浏览器中。请返回列表重新选择。" extra={back} />
 

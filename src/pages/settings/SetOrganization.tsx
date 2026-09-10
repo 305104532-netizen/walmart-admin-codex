@@ -144,7 +144,7 @@ export default function SetOrganization() {
       <Col xs={24} lg={17}>
         <Space orientation="vertical" size={16} style={{ width: '100%' }}>
           <Card title={selectedUnit?.name ?? '部门信息'} extra={<Button icon={<EditOutlined />} disabled={!canManage || !selectedUnit} onClick={() => selectedUnit && openUnit(selectedUnit)}>编辑部门</Button>}>
-            {selectedUnit && <Descriptions size="small" column={{ xs: 1, sm: 2, xl: 3 }} items={[
+            {selectedUnit && <Descriptions size="small" column={{ xs: 1, sm: 2 }} items={[
               { key: 'code', label: '部门编码', children: selectedUnit.code },
               { key: 'type', label: '组织类型', children: TYPE_LABELS[selectedUnit.type] },
               { key: 'leader', label: '负责人', children: memberName(selectedUnit.leaderId) },

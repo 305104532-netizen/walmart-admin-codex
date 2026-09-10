@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { Layout, Menu, Breadcrumb, Dropdown, Badge, Avatar, Space } from 'antd'
+import { Layout, Menu, Breadcrumb, Dropdown, Badge, Avatar, Space, Button, Tooltip } from 'antd'
 import { BellOutlined, UserOutlined, MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons'
 import { useNavigate, useLocation, Outlet } from 'react-router-dom'
 import { menuConfig } from '../menuConfig'
 import { useCurrentAdmin } from '../models/adminAccess'
+import './MainLayout.css'
 
-const { Header, Sider, Content } = Layout
+const { Header, Sider } = Layout
 
 // 构建 AntD Menu items
 const menuItems = menuConfig.map((m) =>
@@ -40,41 +41,44 @@ export default function MainLayout() {
   const openKey = menuConfig.find((m) => m.children?.some((c) => selectedPath.startsWith(c.key)))?.key
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Sider trigger={null} collapsible collapsed={collapsed} width={220} theme="dark">
-        <div style={{ height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: collapsed ? 14 : 16, letterSpacing: 1 }}>
+    <Layout className="admin-app-shell">
+      <a className="admin-skip-link" href="#main-content">跳转到主要内容</a>
+      <Sider className="admin-sider" trigger={null} collapsible collapsed={collapsed} width={220} collapsedWidth={64} breakpoint="lg" onCollapse={setCollapsed} theme="dark">
+        <div className={`admin-logo${collapsed ? ' is-collapsed' : ''}`} title="沃尔玛管理后台">
           {collapsed ? 'WM' : '沃尔玛管理后台'}
         </div>
-        <Menu
-          theme="dark"
-          mode="inline"
-          selectedKeys={[selectedPath]}
-          defaultOpenKeys={openKey ? [openKey] : []}
-          items={menuItems}
-          onClick={({ key }) => navigate(key)}
-        />
+        <nav aria-label="管理后台主导航">
+          <Menu
+            theme="dark"
+            mode="inline"
+            selectedKeys={[selectedPath]}
+            defaultOpenKeys={openKey ? [openKey] : []}
+            items={menuItems}
+            onClick={({ key }) => navigate(key)}
+          />
+        </nav>
       </Sider>
-      <Layout>
-        <Header style={{ padding: '0 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #E5E7EB' }}>
-          <div style={{ cursor: 'pointer', fontSize: 18 }} onClick={() => setCollapsed(!collapsed)}>
-            {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-          </div>
-          <Space size={20}>
-            <Badge count={5} size="small"><BellOutlined style={{ fontSize: 18 }} /></Badge>
+      <Layout className="admin-main-layout">
+        <Header className="admin-header">
+          <Tooltip title={collapsed ? '展开导航' : '收起导航'}>
+            <Button type="text" className="admin-menu-trigger" aria-label={collapsed ? '展开导航' : '收起导航'} icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />} onClick={() => setCollapsed(!collapsed)} />
+          </Tooltip>
+          <Space size={16} className="admin-account-actions">
+            <Badge count={5} size="small"><Button type="text" aria-label="查看通知" icon={<BellOutlined />} /></Badge>
             <Dropdown menu={{ items: [{ key: 'logout', label: '退出登录' }] }}>
-              <Space style={{ cursor: 'pointer' }}>
+              <Space className="admin-user-menu">
                 <Avatar size="small" icon={<UserOutlined />} style={{ background: '#1A56DB' }} />
-                <span>{currentUser.name}</span>
+                <span className="admin-user-name">{currentUser.name}</span>
               </Space>
             </Dropdown>
           </Space>
         </Header>
-        <div style={{ padding: '12px 20px 0' }}>
+        <div className="admin-breadcrumb">
           <Breadcrumb items={crumbs.map((c) => ({ title: c }))} />
         </div>
-        <Content style={{ margin: 20, padding: 20, background: '#fff', borderRadius: 8, minHeight: 280 }}>
+        <main id="main-content" className="admin-content" tabIndex={-1}>
           <Outlet />
-        </Content>
+        </main>
       </Layout>
     </Layout>
   )

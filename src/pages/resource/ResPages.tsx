@@ -379,7 +379,7 @@ export default function ResPages() {
             <div className="phone-nav"><span>‹</span><strong>{builderTitle}</strong><span>•••</span></div>
             <div className="phone-canvas">
               {!blocks.length && <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={<span>上传切图或从左侧添加组件<br />开始搭建临时页面</span>} />}
-              {blocks.map((block, index) => <div key={block.id} className={'phone-block ' + (selectedId === block.id ? 'selected' : '')} onClick={() => { setSelectedId(block.id); setBuilderTab('component') }}>
+              {blocks.map((block, index) => <div key={block.id} className={'phone-block ' + (selectedId === block.id ? 'selected' : '')} role="group" tabIndex={0} aria-label={`选择${block.label}组件`} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setSelectedId(block.id); setBuilderTab('component') } }} onClick={() => { setSelectedId(block.id); setBuilderTab('component') }}>
                 <div className="phone-block-label">{index + 1} · {block.label}</div><PhoneBlock block={block} />
                 {selectedId === block.id && <div className="phone-block-actions"><Button size="small" type="text" icon={<ArrowUpOutlined />} disabled={index === 0} aria-label="上移组件" onClick={(event) => { event.stopPropagation(); moveBlock(block.id, -1) }} /><Button size="small" type="text" icon={<ArrowDownOutlined />} disabled={index === blocks.length - 1} aria-label="下移组件" onClick={(event) => { event.stopPropagation(); moveBlock(block.id, 1) }} /><Button size="small" type="text" danger icon={<DeleteOutlined />} aria-label="删除组件" onClick={(event) => { event.stopPropagation(); removeBlock(block.id) }} /></div>}
               </div>)}

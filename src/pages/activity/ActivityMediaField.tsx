@@ -95,7 +95,7 @@ function FileMediaField({ value = '', onChange, kind, label = '活动素材', ma
       {value && <Button icon={<DeleteOutlined />} disabled={busy} aria-label={`清除${label}`} onClick={() => { onChange?.(''); setUrlDraft({ value: '', text: '' }); setError('') }}>清除</Button>}
       <Typography.Text type="secondary">最大 {limit} MB</Typography.Text>
     </Space>
-    {error && <div role="alert"><Alert type="error" showIcon title={error} /></div>}
+    {error && <div role="alert" aria-live="assertive"><Alert type="error" showIcon title={error} /></div>}
     {safePreview && kind === 'audio' && <audio src={value} controls preload="none" aria-label={`${label}试听`} style={{ width: '100%' }} onError={() => setError('音频无法播放，请检查链接或重新选择文件')} />}
     {value && kind === 'document' && <Typography.Text style={{ overflowWrap: 'anywhere' }}>{mediaName(value)}</Typography.Text>}
   </Space>

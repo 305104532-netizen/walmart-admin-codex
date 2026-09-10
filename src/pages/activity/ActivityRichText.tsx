@@ -97,7 +97,7 @@ export default function ActivityRichText({ value = '', onChange, id }: Props) {
         setError(''); command('createLink', href); setLink('')
       }}>添加链接</Button>
     </Space>
-    {error && <Typography.Text type="danger" role="alert" style={{ display: 'block', padding: '4px 12px' }}>{error}</Typography.Text>}
+    {error && <Typography.Text type="danger" role="alert" aria-live="assertive" style={{ display: 'block', padding: '4px 12px' }}>{error}</Typography.Text>}
     <div id={id} ref={editor} contentEditable suppressContentEditableWarning role="textbox" aria-label="活动详情编辑器" aria-multiline="true" tabIndex={0}
       style={{ padding: 12, minHeight: 210, maxHeight: 520, overflowY: 'auto', overflowWrap: 'anywhere', outlineColor: '#0071ce' }}
       onInput={emit} onMouseUp={remember} onKeyUp={remember} onBlur={remember}

@@ -19,16 +19,16 @@ export default function ContentDictionary() {
   const cur = groups.find((g) => g.key === active)!
 
   return (
-    <div style={{ display: 'flex', gap: 16 }}>
-      <Card title="字典分组" style={{ width: 200, flexShrink: 0 }} styles={{ body: { padding: 8 } }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+      <Card title="字典分组" style={{ flex: '1 1 200px' }} styles={{ body: { padding: 8 } }}>
         {groups.map((g) => (
-          <div key={g.key} onClick={() => setActive(g.key)}
-            style={{ padding: '10px 12px', borderRadius: 6, cursor: 'pointer', marginBottom: 4, background: g.key === active ? '#EFF6FF' : 'transparent', color: g.key === active ? '#1A56DB' : '#111827' }}>
+          <button key={g.key} type="button" aria-pressed={g.key === active} onClick={() => setActive(g.key)}
+            style={{ width: '100%', padding: '10px 12px', border: 0, borderRadius: 6, cursor: 'pointer', marginBottom: 4, textAlign: 'left', background: g.key === active ? '#EFF6FF' : 'transparent', color: g.key === active ? '#1A56DB' : '#111827' }}>
             {g.name}
-          </div>
+          </button>
         ))}
       </Card>
-      <Card title={`字典项 - ${cur.name}`} style={{ flex: 1 }} extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>新增字典项</Button>}>
+      <Card title={`字典项 - ${cur.name}`} style={{ flex: '4 1 520px' }} extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>新增字典项</Button>}>
         <Table
           rowKey="v"
           pagination={false}
@@ -38,6 +38,7 @@ export default function ContentDictionary() {
             { title: '排序', dataIndex: 'order' },
             { title: '操作', render: () => <Space><a>编辑</a><a style={{ color: '#EF4444' }}>删除</a></Space> },
           ]}
+          scroll={{ x: 560 }}
         />
       </Card>
 

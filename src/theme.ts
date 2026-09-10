@@ -1,4 +1,6 @@
-// 设计 Token（对齐 MD 全局规范 + H5/小程序主题）
+import type { ThemeConfig } from 'antd'
+
+// 管理后台设计 Token：所有页面共用同一套颜色、间距、圆角和控件尺寸。
 export const tokens = {
   primary: '#1A56DB',
   primaryHover: '#1E40AF',
@@ -15,10 +17,14 @@ export const tokens = {
   radiusSm: 6,
   radiusMd: 8,
   radiusLg: 12,
+  spaceXs: 4,
+  spaceSm: 8,
+  spaceMd: 16,
+  spaceLg: 24,
 }
 
 // Ant Design 5 ConfigProvider theme
-export const antdTheme = {
+export const antdTheme: ThemeConfig = {
   token: {
     colorPrimary: tokens.primary,
     colorSuccess: tokens.success,
@@ -28,7 +34,13 @@ export const antdTheme = {
     colorTextSecondary: tokens.textSecondary,
     colorBorder: tokens.border,
     borderRadius: tokens.radiusSm,
+    borderRadiusLG: tokens.radiusMd,
     colorBgLayout: tokens.bgPage,
+    colorBgContainer: tokens.bgCard,
+    controlHeight: 36,
+    fontSize: 14,
+    lineHeight: 1.57,
+    motion: true,
   },
   components: {
     Layout: {
@@ -42,6 +54,24 @@ export const antdTheme = {
     },
     Card: {
       borderRadiusLG: tokens.radiusMd,
+      headerFontSize: 16,
+      bodyPadding: 20,
+    },
+    Table: {
+      headerBg: '#F8FAFC',
+      headerColor: tokens.textPrimary,
+      cellPaddingBlock: 14,
+      cellPaddingInline: 16,
+    },
+    Form: {
+      itemMarginBottom: 20,
+      labelColor: tokens.textPrimary,
+    },
+    Drawer: {
+      paddingLG: 20,
+    },
+    Modal: {
+      paddingContentHorizontalLG: 24,
     },
   },
 }
