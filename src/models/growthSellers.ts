@@ -1,13 +1,15 @@
 export type SellerRegistrationStatus = 'unregistered' | 'pending' | 'online'
 export type SellerSite = 'US' | 'CA' | 'MX'
 export type SellerPersona = '基础培育' | '高意向待入驻' | '审核跟进' | '潜力成长' | '核心高质量'
+export type SellerBehaviorChannel = '小程序' | '公众号' | '公众号菜单' | 'SCRM' | '自定义参数'
 
 export interface SellerBehaviorEvent {
   id: string
   time: string
   action: string
-  object: string
-  channel: string
+  pageName: string
+  pagePath: string
+  channel: SellerBehaviorChannel
 }
 
 export interface SellerTag {
@@ -28,6 +30,8 @@ export interface GrowthSeller {
   sites: SellerSite[]
   primarySite: SellerSite
   sellerId?: string
+  openid: string
+  unionid: string
   category: string
   manager: string
   department: string
@@ -73,7 +77,14 @@ const MANAGERS = [
   { name: '张招商', department: '卖家招商部' },
 ]
 const ACTIVITIES = ['2026沃尔玛卖家峰会', '新手入门直播课', 'Q3选品趋势分享会']
-const CONTENT = ['美国站入驻全流程', 'WFS 配送入门', '旺季选品趋势', '广告投放基础', '五要素审核指南']
+const BEHAVIOR_PAGES = [
+  { pageName: '卖家大学', pagePath: '/pages/course/index' },
+  { pageName: '成长中心', pagePath: '/pages/growth/index' },
+  { pageName: '沃要开店', pagePath: '/pages/register/index' },
+  { pageName: '活动中心', pagePath: '/pages/activity/index' },
+  { pageName: '卖家大学', pagePath: '/pages/course/index' },
+] as const
+const BEHAVIOR_CHANNELS: SellerBehaviorChannel[] = ['小程序', '公众号', '公众号菜单', 'SCRM', '自定义参数']
 function pad(value: number): string { return String(value).padStart(2, '0') }
 function date(day: number, hour = 10, minute = 0): string { return `2026-08-${pad((day % 28) + 1)} ${pad(hour)}:${pad(minute)}` }
 
@@ -119,13 +130,19 @@ function buildTags(index: number, status: SellerRegistrationStatus, activeDays: 
 
 function buildBehaviors(index: number, status: SellerRegistrationStatus): SellerBehaviorEvent[] {
   const actions = [
-    ['浏览内容', CONTENT[index % CONTENT.length], '卖家大学'],
-    ['搜索', CATEGORIES[(index + 2) % CATEGORIES.length], '小程序'],
-    [status === 'unregistered' ? '访问入驻页' : '查看入驻进度', status === 'unregistered' ? '沃要开店' : '申请进度', '小程序'],
-    ['报名活动', ACTIVITIES[index % ACTIVITIES.length], '活动中心'],
-    ['完成课程', CONTENT[(index + 1) % CONTENT.length], '卖家大学'],
+    '浏览内容',
+    '搜索',
+    status === 'unregistered' ? '访问入驻页' : '查看入驻进度',
+    '报名活动',
+    '完成课程',
   ]
-  return actions.map(([action, object, channel], offset) => ({ id: `${index}-${offset}`, time: `2026-09-${pad(8 - offset)} ${pad(9 + ((index + offset) % 9))}:${pad((index * 7 + offset * 11) % 60)}`, action, object, channel }))
+  return actions.map((action, offset) => ({
+    id: `${index}-${offset}`,
+    time: `2026-09-${pad(8 - offset)} ${pad(9 + ((index + offset) % 9))}:${pad((index * 7 + offset * 11) % 60)}`,
+    action,
+    ...BEHAVIOR_PAGES[offset],
+    channel: BEHAVIOR_CHANNELS[(index + offset) % BEHAVIOR_CHANNELS.length],
+  }))
 }
 
 export const GROWTH_SELLERS: GrowthSeller[] = Array.from({ length: 60 }, (_, index) => {
@@ -153,6 +170,8 @@ export const GROWTH_SELLERS: GrowthSeller[] = Array.from({ length: 60 }, (_, ind
     sites,
     primarySite: sites[0],
     sellerId: status === 'online' ? `10${String(100000 + index * 137).slice(-6)}` : undefined,
+    openid: `o_demo_${String(index + 1).padStart(6, '0')}`,
+    unionid: `u_demo_${String(index + 1).padStart(6, '0')}`,
     category: CATEGORIES[index % CATEGORIES.length],
     manager: manager.name,
     department: manager.department,

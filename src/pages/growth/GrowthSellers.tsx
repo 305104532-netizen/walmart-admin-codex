@@ -34,12 +34,14 @@ export default function GrowthSellers() {
 
   const filtered = useMemo(() => GROWTH_SELLERS.filter((seller) => (status === 'all' || seller.registrationStatus === status)
     && (!site || seller.sites.includes(site)) && (!persona || seller.persona === persona) && (!manager || seller.manager === manager)
-    && (!keyword || `${seller.name}${seller.company}${seller.email}${seller.sellerId ?? ''}`.toLowerCase().includes(keyword.toLowerCase()))), [keyword, manager, persona, site, status])
+    && (!keyword || `${seller.name}${seller.company}${seller.email}${seller.sellerId ?? ''}${seller.openid}${seller.unionid}`.toLowerCase().includes(keyword.toLowerCase()))), [keyword, manager, persona, site, status])
   const counts = Object.fromEntries(['unregistered', 'pending', 'online'].map((key) => [key, GROWTH_SELLERS.filter((seller) => seller.registrationStatus === key).length])) as Record<SellerRegistrationStatus, number>
   const openDetail = (seller: GrowthSeller, tab = 'portrait') => { setDetail(seller); setDetailTab(tab) }
 
   const columns = [
     { title: '卖家', key: 'seller', fixed: 'left' as const, width: 230, render: (_: unknown, seller: GrowthSeller) => <Space><Avatar style={{ background: '#E8F1FF', color: '#1A56DB' }} icon={<ShopOutlined />} /><div><Button type="link" style={{ padding: 0, height: 'auto', fontWeight: 600 }} onClick={() => openDetail(seller)}>{seller.name}</Button><br /><Typography.Text type="secondary" ellipsis style={{ width: 165, fontSize: 12 }}>{seller.company}</Typography.Text></div></Space> },
+    { title: 'openid', dataIndex: 'openid', width: 190, render: (value: string) => <Typography.Text code copyable={{ text: value }}>{value}</Typography.Text> },
+    { title: 'unionid', dataIndex: 'unionid', width: 190, render: (value: string) => <Typography.Text code copyable={{ text: value }}>{value}</Typography.Text> },
     { title: '入驻状态', dataIndex: 'registrationStatus', width: 100, render: (value: SellerRegistrationStatus) => <Tag color={STATUS[value].color}>{STATUS[value].label}</Tag> },
     { title: '进度', dataIndex: 'registrationProgress', width: 130, render: (value: number) => <Progress percent={value} size="small" style={{ width: 100 }} /> },
     { title: '站点', dataIndex: 'sites', width: 130, render: (sites: SellerSite[]) => <Space size={[0, 4]} wrap>{sites.map((value) => <Tag key={value}>{value}</Tag>)}</Space> },
@@ -70,7 +72,10 @@ export default function GrowthSellers() {
       <Col xs={24} lg={14}><Card size="small" title="五维成长评分">{SCORE_LABELS.map(([key, label]) => <div key={key} style={{ marginBottom: 14 }}><Space style={{ display: 'flex', justifyContent: 'space-between' }}><Typography.Text>{label}</Typography.Text><Typography.Text strong>{detail.scores[key]}</Typography.Text></Space><Progress percent={detail.scores[key]} showInfo={false} strokeColor={scoreColor(detail.scores[key])} /></div>)}</Card></Col>
       <Col xs={24} lg={10}><Card size="small" title="卖家概览"><Descriptions column={1} size="small" items={[
         { key: 'category', label: '主营类目', children: detail.category }, { key: 'site', label: '经营站点', children: detail.sites.join('、') },
-        { key: 'sellerId', label: 'Seller ID', children: detail.sellerId ?? '上线后生成' }, { key: 'manager', label: '所属招商', children: `${detail.manager} · ${detail.department}` },
+        { key: 'sellerId', label: 'Seller ID', children: detail.sellerId ?? '上线后生成' },
+        { key: 'openid', label: 'openid', children: <Typography.Text code copyable>{detail.openid}</Typography.Text> },
+        { key: 'unionid', label: 'unionid', children: <Typography.Text code copyable>{detail.unionid}</Typography.Text> },
+        { key: 'manager', label: '所属招商', children: `${detail.manager} · ${detail.department}` },
         { key: 'active', label: '最后活跃', children: detail.lastActiveAt },
       ]} /></Card></Col>
     </Row>
@@ -105,9 +110,11 @@ export default function GrowthSellers() {
       { key: 'search', label: '搜索次数', children: `${detail.searches30} 次` }, { key: 'favorite', label: '收藏次数', children: `${detail.favorites30} 次` },
       { key: 'last', label: '最后活跃', children: detail.lastActiveAt }, { key: 'channel', label: '主要访问渠道', children: channelFor(detail) },
     ]} /></Card>
-    <Card size="small" title="最近行为轨迹"><Table rowKey="id" size="small" pagination={false} dataSource={detail.behaviors} columns={[
+    <Card size="small" title="最近行为轨迹"><Table rowKey="id" size="small" pagination={false} dataSource={detail.behaviors} scroll={{ x: 850 }} columns={[
       { title: '时间', dataIndex: 'time', width: 150 }, { title: '行为', dataIndex: 'action', width: 110, render: (value: string) => <Tag color="blue">{value}</Tag> },
-      { title: '对象', dataIndex: 'object' }, { title: '渠道', dataIndex: 'channel', width: 100 },
+      { title: '页面名称', dataIndex: 'pageName', width: 150 },
+      { title: '页面路径', dataIndex: 'pagePath', width: 245, render: (value: string) => <Typography.Text code copyable={{ text: value }}>{value}</Typography.Text> },
+      { title: '渠道', dataIndex: 'channel', width: 125 },
     ]} /></Card>
   </Space> : null
 
@@ -126,7 +133,7 @@ export default function GrowthSellers() {
     <Row gutter={[16, 16]}><Col xs={12} md={6}><Card size="small"><Statistic title="全部卖家" value={GROWTH_SELLERS.length} prefix={<TeamOutlined />} /></Card></Col><Col xs={12} md={6}><Card size="small"><Statistic title="未入驻" value={counts.unregistered} /></Card></Col><Col xs={12} md={6}><Card size="small"><Statistic title="审核中" value={counts.pending} /></Card></Col><Col xs={12} md={6}><Card size="small"><Statistic title="已上线" value={counts.online} /></Card></Col></Row>
     <Card>
       <Space wrap style={{ marginBottom: 16 }}>
-        <Input allowClear prefix={<SearchOutlined />} placeholder="卖家 / 公司 / 邮箱 / Seller ID" value={keyword} onChange={(event) => setKeyword(event.target.value)} style={{ width: 280 }} />
+        <Input allowClear prefix={<SearchOutlined />} placeholder="卖家 / 公司 / 邮箱 / Seller ID / openid / unionid" value={keyword} onChange={(event) => setKeyword(event.target.value)} style={{ width: 360 }} />
         <Select allowClear placeholder="经营站点" value={site} onChange={setSite} style={{ width: 130 }} options={['US', 'CA', 'MX'].map((value) => ({ value, label: value }))} />
         <Select allowClear placeholder="360°画像" value={persona} onChange={setPersona} style={{ width: 160 }} options={Object.keys(PERSONA_COLORS).map((value) => ({ value, label: value }))} />
         <Select allowClear placeholder="所属经理" value={manager} onChange={setManager} style={{ width: 150 }} options={[...new Set(GROWTH_SELLERS.map((seller) => seller.manager))].map((value) => ({ value, label: value }))} />
@@ -135,7 +142,7 @@ export default function GrowthSellers() {
         { key: 'all', label: `全部（${GROWTH_SELLERS.length}）` }, { key: 'unregistered', label: `未入驻（${counts.unregistered}）` },
         { key: 'pending', label: `审核中（${counts.pending}）` }, { key: 'online', label: `已上线（${counts.online}）` },
       ]} />
-      <Table rowKey="id" columns={columns} dataSource={filtered} pagination={{ pageSize: 15, showSizeChanger: true, showTotal: (total) => `共 ${total} 位卖家` }} scroll={{ x: 1450 }} locale={{ emptyText: <Empty description="未找到符合条件的卖家" /> }} />
+      <Table rowKey="id" columns={columns} dataSource={filtered} pagination={{ pageSize: 15, showSizeChanger: true, showTotal: (total) => `共 ${total} 位卖家` }} scroll={{ x: 1830 }} locale={{ emptyText: <Empty description="未找到符合条件的卖家" /> }} />
     </Card>
 
     <Drawer open={!!detail} onClose={() => setDetail(undefined)} size="min(1060px, 94vw)" title={detail ? <Space><Avatar style={{ background: '#1A56DB' }} icon={<UserOutlined />} /><div><Typography.Text strong>{detail.name}</Typography.Text><br /><Typography.Text type="secondary" style={{ fontSize: 12 }}>{detail.company}</Typography.Text></div><Tag color={STATUS[detail.registrationStatus].color}>{STATUS[detail.registrationStatus].label}</Tag></Space> : '卖家详情'}>
@@ -150,7 +157,9 @@ export default function GrowthSellers() {
 }
 
 function channelFor(seller: GrowthSeller): string {
-  return seller.contentViews30 >= seller.activitiesJoined * 5 ? '卖家大学' : '活动中心'
+  const counts = new Map<string, number>()
+  seller.behaviors.forEach((event) => counts.set(event.channel, (counts.get(event.channel) ?? 0) + 1))
+  return [...counts].sort((left, right) => right[1] - left[1])[0]?.[0] ?? '小程序'
 }
 
 function registrationFieldValue(seller: GrowthSeller, key: string): string {
