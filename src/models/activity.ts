@@ -137,6 +137,25 @@ export async function saveActivity(
   return activity
 }
 
+export async function setActivityPublicationStatus(id: string, status: StoredActivity['status']): Promise<StoredActivity> {
+  const existing = await readSavedActivity(id)
+  if (!existing) throw new Error('活动不存在，请刷新活动列表后重试。')
+  const activity: StoredActivity = { ...existing, status, updatedAt: new Date().toISOString() }
+  const database = await openDatabase()
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const transaction = database.transaction(STORE_NAME, 'readwrite')
+      transaction.objectStore(STORE_NAME).put(activity)
+      transaction.oncomplete = () => resolve()
+      transaction.onabort = () => reject(transaction.error ?? new Error('更新活动上下架状态失败。'))
+      transaction.onerror = () => reject(transaction.error ?? new Error('更新活动上下架状态失败。'))
+    })
+  } finally {
+    database.close()
+  }
+  return activity
+}
+
 export function getActivityStatus(record: StoredActivity): 'draft' | 'upcoming' | 'ongoing' | 'ended' {
   if (record.status === 'draft') return 'draft'
   const now = Date.now()

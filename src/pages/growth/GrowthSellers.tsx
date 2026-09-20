@@ -45,7 +45,7 @@ export default function GrowthSellers() {
   const selectedStore = detail?.stores.find((store) => store.id === selectedStoreId) ?? detail?.stores[0]
 
   const columns = [
-    { title: '卖家姓名', key: 'seller', fixed: 'left' as const, width: 230, render: (_: unknown, seller: GrowthSeller) => <Space><Avatar style={{ background: '#E8F1FF', color: '#1A56DB' }} icon={<UserOutlined />} /><div><Button type="link" style={{ padding: 0, height: 'auto', fontWeight: 600 }} onClick={() => openDetail(seller)}>{seller.name}</Button><br /><Typography.Text type="secondary" ellipsis style={{ width: 165, fontSize: 12 }}>{seller.company}</Typography.Text></div></Space> },
+    { title: '卖家姓名', key: 'seller', fixed: 'left' as const, width: 180, render: (_: unknown, seller: GrowthSeller) => <Space><Avatar style={{ background: '#E8F1FF', color: '#1A56DB' }} icon={<UserOutlined />} /><Button type="link" style={{ padding: 0, height: 'auto', fontWeight: 600 }} onClick={() => openDetail(seller)}>{seller.name}</Button></Space> },
     { title: 'openid', dataIndex: 'openid', width: 190, render: (value: string) => <Typography.Text code copyable={{ text: value }}>{value}</Typography.Text> },
     { title: 'unionid', dataIndex: 'unionid', width: 190, render: (value: string) => <Typography.Text code copyable={{ text: value }}>{value}</Typography.Text> },
     { title: '站点', dataIndex: 'sites', width: 130, render: (sites: SellerSite[]) => <Space size={[0, 4]} wrap>{sites.map((value) => <Tag key={value}>{value}</Tag>)}</Space> },

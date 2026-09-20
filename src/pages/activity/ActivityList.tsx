@@ -1,10 +1,10 @@
-import { Alert, Table, Tag, Button, Space, Input, Select, DatePicker, Progress } from 'antd'
+import { Alert, Table, Tag, Button, Space, Input, Select, DatePicker, Progress, message } from 'antd'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { PlusOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons'
 import { Link, useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
 import type { Dayjs } from 'dayjs'
-import { getActivityStatus, readSavedActivities } from '../../models/activity'
+import { getActivityStatus, readSavedActivities, setActivityPublicationStatus } from '../../models/activity'
 import type { StoredActivity } from '../../models/activity'
 import { DEMO_ACTIVITIES } from '../../models/activityDemo'
 
@@ -18,6 +18,7 @@ interface Act {
   signup: number
   capacity: number | null
   status: SK
+  publicationStatus: StoredActivity['status']
   configured: boolean
 }
 
@@ -47,12 +48,14 @@ function toRow(record: StoredActivity, configured: boolean): Act {
     signup: record.signup,
     capacity: values.capacityLimited !== false && typeof values.capacity === 'number' && values.capacity > 0 ? values.capacity : null,
     status: getActivityStatus(record),
+    publicationStatus: record.status,
     configured,
   }
 }
 
 export default function ActivityList() {
   const navigate = useNavigate()
+  const [messageApi, messageContext] = message.useMessage()
   const [kw, setKw] = useState('')
   const [mode, setMode] = useState<string>()
   const [kind, setKind] = useState<string>()
@@ -62,6 +65,8 @@ export default function ActivityList() {
   const [records, setRecords] = useState<StoredActivity[]>([])
   const [loading, setLoading] = useState(true)
   const [storageError, setStorageError] = useState('')
+  const [demoStatuses, setDemoStatuses] = useState<Record<string, StoredActivity['status']>>({})
+  const [updatingId, setUpdatingId] = useState<string>()
   const loadActivities = useCallback(() => readSavedActivities()
     .then((saved) => {
       setRecords(saved)
@@ -86,8 +91,8 @@ export default function ActivityList() {
 
   const rows = useMemo(() => [
     ...records.map((record) => toRow(record, true)),
-    ...DEMO_ACTIVITIES.map((record) => toRow(record, false)),
-  ], [records])
+    ...DEMO_ACTIVITIES.map((record) => toRow({ ...record, status: demoStatuses[record.id] ?? record.status }, false)),
+  ], [demoStatuses, records])
   const cities = [...new Set(rows.map((row) => row.city).filter(Boolean))]
   const kinds = [...new Set(rows.map((row) => row.kind).filter(Boolean))]
 
@@ -103,15 +108,35 @@ export default function ActivityList() {
     </div> },
     { title: '状态', dataIndex: 'status', width: 90, render: (value: SK) => <Tag color={STATUS[value].c}>{STATUS[value].t}</Tag> },
     { title: '数据来源', dataIndex: 'configured', width: 110, render: (configured: boolean) => <Tag color={configured ? 'cyan' : 'default'}>{configured ? '已配置活动' : '演示数据'}</Tag> },
-    { title: '操作', width: 320, render: (_: unknown, row: Act) => <Space wrap>
+    { title: '操作', width: 380, render: (_: unknown, row: Act) => <Space wrap>
       <Link to={`/activity/detail/${encodeURIComponent(row.id)}`}>查看详情</Link>
       {row.configured ? <a onClick={() => navigate(`/activity/create?id=${encodeURIComponent(row.id)}`)}>编辑配置</a> : <>
         <a onClick={() => navigate('/activity/signup/' + row.id)}>报名管理</a>
         <a onClick={() => navigate('/activity/checkin/' + row.id)}>签到</a>
         <a onClick={() => navigate('/activity/leads')}>转化</a>
       </>}
+      <Button type="link" size="small" danger={row.publicationStatus === 'published'} loading={updatingId === row.id} onClick={() => void updatePublication(row, row.publicationStatus === 'published' ? 'draft' : 'published')}>
+        {row.publicationStatus === 'published' ? '下架' : '上架'}
+      </Button>
     </Space> },
   ]
+
+  async function updatePublication(row: Act, nextStatus: StoredActivity['status']) {
+    setUpdatingId(row.id)
+    try {
+      if (row.configured) {
+        const updated = await setActivityPublicationStatus(row.id, nextStatus)
+        setRecords((current) => current.map((record) => record.id === row.id ? updated : record))
+      } else {
+        setDemoStatuses((current) => ({ ...current, [row.id]: nextStatus }))
+      }
+      messageApi.success(nextStatus === 'published' ? '活动已上架' : '活动已下架')
+    } catch (cause) {
+      messageApi.error(cause instanceof Error ? cause.message : '更新活动上下架状态失败')
+    } finally {
+      setUpdatingId(undefined)
+    }
+  }
 
   const filtered = rows.filter((row) => {
     if (kw.trim() && !row.title.toLocaleLowerCase().includes(kw.trim().toLocaleLowerCase())) return false
@@ -130,6 +155,7 @@ export default function ActivityList() {
 
   return (
     <div>
+      {messageContext}
       {storageError && <Alert type="error" showIcon title="无法读取已保存活动" description={storageError} action={<Button onClick={refreshActivities}>重试</Button>} style={{ marginBottom: 16 }} />}
       <Space style={{ marginBottom: 16 }} wrap>
         <Select aria-label="活动形式" placeholder="形式" style={{ width: 140 }} allowClear value={mode} onChange={setMode} options={Object.entries(MODES).map(([value, item]) => ({ value, label: item.label }))} />

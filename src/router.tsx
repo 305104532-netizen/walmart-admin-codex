@@ -38,6 +38,7 @@ import ActivitySurvey from './pages/activity/ActivitySurvey'
 import ActivityScm from './pages/activity/ActivityScm'
 import SummitList from './pages/activity/SummitList'
 import SummitCreate from './pages/activity/SummitCreate'
+import SummitDetail from './pages/activity/SummitDetail'
 // 数据看板
 import DataOverview from './pages/data/DataOverview'
 import DataBehavior from './pages/data/DataBehavior'
@@ -96,6 +97,7 @@ export const router = createBrowserRouter([
       { path: 'activity/detail/:id', element: <ActivityDetail /> },
       { path: 'activity/create', element: <ActivityCreate /> },
       { path: 'activity/summit', element: <SummitList /> },
+      { path: 'activity/summit/detail/:id', element: <SummitDetail /> },
       { path: 'activity/summit/create', element: <SummitCreate /> },
       { path: 'activity/signup', element: <ActivitySignup /> },
       { path: 'activity/signup/:id', element: <ActivitySignup /> },

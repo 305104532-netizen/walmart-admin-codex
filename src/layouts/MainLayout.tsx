@@ -17,6 +17,7 @@ const menuItems = menuConfig.map((m) =>
 
 // 路由 → 面包屑映射
 function findBreadcrumb(path: string): string[] {
+  if (path.startsWith('/activity/summit/detail/')) return ['活动管理', '沃尔玛峰会管理', '峰会详情']
   if (path === '/activity/summit/create') return ['活动管理', '沃尔玛峰会管理', '创建峰会']
   if (path.startsWith('/activity/detail/')) return ['活动管理', '活动列表', '活动详情']
   for (const m of menuConfig) {
@@ -35,7 +36,9 @@ export default function MainLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const crumbs = findBreadcrumb(location.pathname)
-  const selectedPath = location.pathname.startsWith('/activity/detail/') ? '/activity/list' : location.pathname
+  const selectedPath = location.pathname.startsWith('/activity/detail/') ? '/activity/list'
+    : location.pathname.startsWith('/activity/summit/') ? '/activity/summit'
+      : location.pathname
 
   // 展开的父菜单
   const openKey = menuConfig.find((m) => m.children?.some((c) => selectedPath.startsWith(c.key)))?.key
