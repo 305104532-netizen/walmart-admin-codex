@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Alert, Button, Card, Empty, Input, Progress, Select, Space, Table, Tag, Typography } from 'antd'
+import { Alert, Button, Card, Empty, Input, Progress, Select, Space, Table, Tag, Typography, message } from 'antd'
 import type { TableColumnsType } from 'antd'
 import { EyeOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
-import { getSummitRuntimeStatus, readSummits } from '../../models/summit'
+import { getSummitRuntimeStatus, readSummits, setSummitPublicationStatus } from '../../models/summit'
 import type { StoredSummit } from '../../models/summit'
 import { DEMO_SUMMITS } from '../../models/summitDemo'
 
@@ -18,11 +18,14 @@ type SummitStatus = keyof typeof STATUS
 
 export default function SummitList() {
   const navigate = useNavigate()
+  const [messageApi, messageContext] = message.useMessage()
   const [records, setRecords] = useState<StoredSummit[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [keyword, setKeyword] = useState('')
   const [status, setStatus] = useState<SummitStatus>()
+  const [demoStatuses, setDemoStatuses] = useState<Record<string, StoredSummit['status']>>({})
+  const [updatingId, setUpdatingId] = useState<string>()
 
   const fetchRecords = useCallback(() => readSummits()
     .then((items) => { setRecords(items); setError('') })
@@ -39,7 +42,10 @@ export default function SummitList() {
     return () => window.removeEventListener('focus', onFocus)
   }, [fetchRecords, load])
 
-  const allRecords = useMemo(() => [...records, ...DEMO_SUMMITS], [records])
+  const allRecords = useMemo(() => [
+    ...records,
+    ...DEMO_SUMMITS.map((record) => ({ ...record, status: demoStatuses[record.id] ?? record.status })),
+  ], [demoStatuses, records])
   const rows = useMemo(() => allRecords.filter((record) => {
     const text = keyword.trim().toLowerCase()
     if (text && ![record.values.title, record.values.shortTitle, record.values.city, record.values.venue].some((value) => value?.toLowerCase().includes(text))) return false
@@ -61,15 +67,36 @@ export default function SummitList() {
     { title: '签到', width: 90, render: (_: unknown, record) => record.values.needCheckin ? record.checkin : '未开启' },
     { title: '议程 / 嘉宾', width: 120, render: (_: unknown, record) => `${record.values.agenda.length} / ${record.values.guests.length}` },
     { title: '状态', width: 100, render: (_: unknown, record) => { const item = STATUS[getSummitRuntimeStatus(record)]; return <Tag color={item.color}>{item.label}</Tag> } },
-    { title: '操作', width: 300, fixed: 'right', render: (_: unknown, record) => <Space size={0}>
+    { title: '操作', width: 360, fixed: 'right', render: (_: unknown, record) => <Space size={0} wrap>
       <Button type="link" icon={<EyeOutlined />} onClick={() => navigate(`/activity/summit/detail/${encodeURIComponent(record.id)}`)}>查看详情</Button>
       {!record.id.startsWith('summit-demo-') && <Button type="link" onClick={() => navigate(`/activity/summit/create?id=${encodeURIComponent(record.id)}`)}>编辑</Button>}
       <Button type="link" onClick={() => navigate(`/activity/signup/${encodeURIComponent(record.id)}`)}>报名名单</Button>
       {record.values.needCheckin && <Button type="link" onClick={() => navigate(`/activity/checkin/${encodeURIComponent(record.id)}`)}>签到</Button>}
+      <Button type="link" size="small" danger={record.status === 'published'} loading={updatingId === record.id} onClick={() => void updatePublication(record, record.status === 'published' ? 'draft' : 'published')}>
+        {record.status === 'published' ? '下架' : '上架'}
+      </Button>
     </Space> },
   ]
 
+  async function updatePublication(record: StoredSummit, nextStatus: StoredSummit['status']) {
+    setUpdatingId(record.id)
+    try {
+      if (record.id.startsWith('summit-demo-')) {
+        setDemoStatuses((current) => ({ ...current, [record.id]: nextStatus }))
+      } else {
+        const updated = await setSummitPublicationStatus(record.id, nextStatus)
+        setRecords((current) => current.map((item) => item.id === record.id ? updated : item))
+      }
+      messageApi.success(nextStatus === 'published' ? '峰会已上架' : '峰会已下架')
+    } catch (cause) {
+      messageApi.error(cause instanceof Error ? cause.message : '更新峰会上下架状态失败')
+    } finally {
+      setUpdatingId(undefined)
+    }
+  }
+
   return <Space orientation="vertical" size={20} style={{ width: '100%' }}>
+    {messageContext}
     <Space wrap style={{ display: 'flex', justifyContent: 'space-between' }}>
       <div><Typography.Title level={4} style={{ margin: 0 }}>沃尔玛峰会管理</Typography.Title><Typography.Text type="secondary">独立配置峰会详情、议程、嘉宾、报名和现场签到</Typography.Text></div>
       <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/activity/summit/create')}>创建沃尔玛峰会</Button>

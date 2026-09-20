@@ -159,6 +159,23 @@ export async function saveSummit(values: SummitConfig, status: StoredSummit['sta
   return structuredClone(record)
 }
 
+export async function setSummitPublicationStatus(id: string, status: StoredSummit['status']): Promise<StoredSummit> {
+  const existing = await readSummit(id)
+  if (!existing) throw new Error('峰会不存在，请刷新峰会列表后重试。')
+  const record: StoredSummit = { ...existing, status, updatedAt: new Date().toISOString() }
+  const database = await openDatabase()
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const transaction = database.transaction(STORE_NAME, 'readwrite')
+      transaction.objectStore(STORE_NAME).put(record)
+      transaction.oncomplete = () => resolve()
+      transaction.onabort = () => reject(transaction.error ?? new Error('更新峰会上下架状态失败。'))
+      transaction.onerror = () => reject(transaction.error ?? new Error('更新峰会上下架状态失败。'))
+    })
+  } finally { database.close() }
+  return structuredClone(record)
+}
+
 export function getSummitRuntimeStatus(record: StoredSummit): 'draft' | 'registration' | 'ongoing' | 'ended' {
   if (record.status === 'draft') return 'draft'
   const now = Date.now()
