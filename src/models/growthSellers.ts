@@ -19,6 +19,23 @@ export interface SellerTag {
   updatedAt: string
 }
 
+export interface SellerStore {
+  id: string
+  name: string
+  site: SellerSite
+  binding: 'current' | 'historical'
+  boundAt: string
+  unboundAt?: string
+  registrationStatus: SellerRegistrationStatus
+  registrationProgress: number
+  sellerId?: string
+  submittedAt?: string
+  onlineAt?: string
+  fiveFaStatus: GrowthSeller['fiveFaStatus']
+  legalEntity: string
+  formVersion: string
+}
+
 export interface GrowthSeller {
   id: string
   name: string
@@ -30,6 +47,7 @@ export interface GrowthSeller {
   sites: SellerSite[]
   primarySite: SellerSite
   sellerId?: string
+  stores: SellerStore[]
   openid: string
   unionid: string
   category: string
@@ -145,6 +163,35 @@ function buildBehaviors(index: number, status: SellerRegistrationStatus): Seller
   }))
 }
 
+function buildStores(index: number, status: SellerRegistrationStatus, progress: number, sites: SellerSite[], company: string, sellerId?: string): SellerStore[] {
+  const createStore = (site: SellerSite, position: number, binding: SellerStore['binding'], storeStatus: SellerRegistrationStatus): SellerStore => {
+    const storeProgress = position === 0 ? progress : storeStatus === 'online' ? 100 : storeStatus === 'pending' ? 72 + index % 4 * 6 : 15
+    return {
+      id: `store-${index + 1}-${position}`,
+      name: `${company.replace('有限公司', '')}·${site}${binding === 'historical' ? '历史店' : '店'}`,
+      site, binding,
+      boundAt: date(index + position + 1).slice(0, 10),
+      unboundAt: binding === 'historical' ? date(index + position + 16).slice(0, 10) : undefined,
+      registrationStatus: storeStatus,
+      registrationProgress: storeProgress,
+      sellerId: storeStatus === 'online' ? (position === 0 ? sellerId : `10${String(200000 + index * 137 + position * 37)}`) : undefined,
+      submittedAt: storeStatus === 'unregistered' ? undefined : date(index + position + 3),
+      onlineAt: storeStatus === 'online' ? date(index + position + 8) : undefined,
+      fiveFaStatus: storeStatus === 'online' ? '已通过' : storeStatus === 'pending' ? '审核中' : '未开始',
+      legalEntity: position === 0 ? company : `${company.replace('有限公司', '')}${site}业务有限公司`,
+      formVersion: position === 0 ? '标准表单 v15' : '标准表单 v14',
+    }
+  }
+  const current = [createStore(sites[0], 0, 'current', status)]
+  if (status !== 'unregistered' && index % 4 === 1) {
+    current.push(createStore(sites[1] ?? (sites[0] === 'US' ? 'CA' : 'US'), 1, 'current', status === 'online' ? 'pending' : 'unregistered'))
+  }
+  const historical = index % 3 === 0
+    ? [createStore(sites[1] ?? (sites[0] === 'MX' ? 'US' : 'MX'), 2, 'historical', 'online')]
+    : []
+  return [...current, ...historical]
+}
+
 export const GROWTH_SELLERS: GrowthSeller[] = Array.from({ length: 60 }, (_, index) => {
   const status = statusFor(index)
   const sites = sitesFor(index)
@@ -159,17 +206,20 @@ export const GROWTH_SELLERS: GrowthSeller[] = Array.from({ length: 60 }, (_, ind
   const persona = personaFor(status, maturity, registrationIntent)
   const progress = status === 'online' ? 100 : status === 'pending' ? 65 + (index % 4) * 8 : 10 + (index % 5) * 9
   const activity = index % 2 === 0 && status !== 'unregistered' ? ACTIVITIES[index % ACTIVITIES.length] : undefined
+  const company = `${COMPANIES[index % COMPANIES.length]}有限公司`
+  const sellerId = status === 'online' ? `10${String(100000 + index * 137).slice(-6)}` : undefined
   return {
     id: `seller-${pad(index + 1)}`,
     name: NAMES[index % NAMES.length],
-    company: `${COMPANIES[index % COMPANIES.length]}有限公司`,
+    company,
     email: `seller${pad(index + 1)}@example.com`,
     phone: `138****${String(1200 + index).slice(-4)}`,
     registrationStatus: status,
     registrationProgress: progress,
     sites,
     primarySite: sites[0],
-    sellerId: status === 'online' ? `10${String(100000 + index * 137).slice(-6)}` : undefined,
+    sellerId,
+    stores: buildStores(index, status, progress, sites, company, sellerId),
     openid: `o_demo_${String(index + 1).padStart(6, '0')}`,
     unionid: `u_demo_${String(index + 1).padStart(6, '0')}`,
     category: CATEGORIES[index % CATEGORIES.length],
