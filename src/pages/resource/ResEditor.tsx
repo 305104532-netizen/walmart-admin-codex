@@ -15,7 +15,7 @@ import './ResEditor.css'
 
 type ModuleType = 'search' | 'banner' | 'quickNav' | 'content' | 'custom' | 'notice' | 'activity' | 'course'
 type JumpType = 'internal' | 'external' | 'miniProgram'
-type JumpTarget = { jumpType: JumpType; url?: string; pagePath?: string; appId?: string; miniPath?: string }
+type JumpTarget = { jumpType: JumpType; pageTitle?: string; url?: string; pagePath?: string; appId?: string; miniPath?: string }
 type BannerItem = JumpTarget & { id: number; image: string; name: string }
 type ContentItem = JumpTarget & { id: number; title: string; subtitle: string; icon: string; enabled: boolean }
 type HomeModule = {
@@ -53,14 +53,14 @@ const TAB_DEFAULTS: NavItem[] = [
   { id: 4, name: '我的', path: '/pages/mine/index', icon: '', activeIcon: '', enabled: true },
 ]
 const DEFAULT_BANNERS: BannerItem[] = [
-  { id: 1, name: '首页主视觉', image: '', jumpType: 'internal', pagePath: '/pages/activity/index' },
-  { id: 2, name: '卖家成长专区', image: '', jumpType: 'internal', pagePath: '/pages/growth/index' },
+  { id: 1, name: '首页主视觉', image: '', jumpType: 'internal', pageTitle: '活动中心', pagePath: '/pages/activity/index' },
+  { id: 2, name: '卖家成长专区', image: '', jumpType: 'internal', pageTitle: '成长中心', pagePath: '/pages/growth/index' },
 ]
 const DEFAULT_CONTENT: ContentItem[] = [
-  { id: 1, title: '品类洞察', subtitle: '趋势与选品', icon: '', enabled: true, jumpType: 'internal', pagePath: '/pages/content/category' },
-  { id: 2, title: '卖家案例', subtitle: '成功经验', icon: '', enabled: true, jumpType: 'internal', pagePath: '/pages/content/case' },
-  { id: 3, title: '物流方案', subtitle: 'WFS/头程', icon: '', enabled: true, jumpType: 'internal', pagePath: '/pages/content/logistics' },
-  { id: 4, title: '运营干货', subtitle: '实战技巧', icon: '', enabled: true, jumpType: 'internal', pagePath: '/pages/content/operation' },
+  { id: 1, title: '品类洞察', subtitle: '趋势与选品', icon: '', enabled: true, jumpType: 'internal', pageTitle: '品类洞察', pagePath: '/pages/content/category' },
+  { id: 2, title: '卖家案例', subtitle: '成功经验', icon: '', enabled: true, jumpType: 'internal', pageTitle: '卖家案例', pagePath: '/pages/content/case' },
+  { id: 3, title: '物流方案', subtitle: 'WFS/头程', icon: '', enabled: true, jumpType: 'internal', pageTitle: '物流方案', pagePath: '/pages/content/logistics' },
+  { id: 4, title: '运营干货', subtitle: '实战技巧', icon: '', enabled: true, jumpType: 'internal', pageTitle: '运营干货', pagePath: '/pages/content/operation' },
 ]
 const cloneBanners = () => DEFAULT_BANNERS.map((item) => ({ ...item }))
 const cloneContent = () => DEFAULT_CONTENT.map((item) => ({ ...item }))
@@ -119,7 +119,10 @@ function JumpTargetFields({ target, onChange }: { target: JumpTarget; onChange: 
       { value: 'external', label: '外部链接' },
       { value: 'miniProgram', label: '外部小程序' },
     ]} /></div>
-    {target.jumpType === 'internal' && <div><label>小程序页面路径</label><Input value={target.pagePath} placeholder="例如：/pages/activity/index" onChange={(event) => onChange({ pagePath: event.target.value })} /></div>}
+    {target.jumpType === 'internal' && <>
+      <div><label>小程序页面标题</label><Input value={target.pageTitle} placeholder="例如：活动中心" maxLength={20} showCount onChange={(event) => onChange({ pageTitle: event.target.value })} /></div>
+      <div><label>小程序页面路径</label><Input value={target.pagePath} placeholder="例如：/pages/activity/index" onChange={(event) => onChange({ pagePath: event.target.value })} /></div>
+    </>}
     {target.jumpType === 'external' && <div><label>外部链接</label><Input value={target.url} placeholder="https://" onChange={(event) => onChange({ url: event.target.value })} /></div>}
     {target.jumpType === 'miniProgram' && <>
       <div><label>外部小程序 AppID</label><Input value={target.appId} placeholder="wx..." onChange={(event) => onChange({ appId: event.target.value })} /></div>
@@ -180,7 +183,6 @@ export default function ResEditor() {
   const [quickNav, setQuickNav] = useState<NavItem[]>(QUICK_NAV_DEFAULTS)
   const [tabs, setTabs] = useState<NavItem[]>(TAB_DEFAULTS)
   const [tabHeight, setTabHeight] = useState(68)
-  const [tabBackground, setTabBackground] = useState('#ffffff')
   const [tabVisible, setTabVisible] = useState(true)
   const [selected, setSelected] = useState('module:2')
   const [saved, setSaved] = useState(true)
@@ -217,7 +219,7 @@ export default function ResEditor() {
       text: type === 'search' ? '搜索课程、活动、政策' : type === 'notice' ? '请输入公告内容' : '',
       ...(type === 'banner' ? { banners: cloneBanners(), interval: 3 } : {}),
       ...(type === 'content' ? { contentItems: cloneContent(), layout: 'grid' as const, background: '#f5f6f8' } : {}),
-      ...(type === 'custom' ? { title: '自定义模块标题', text: '添加模块说明文案', buttonText: '查看详情', jump: { jumpType: 'internal' as const, pagePath: '/pages/index/index' } } : {}),
+      ...(type === 'custom' ? { title: '自定义模块标题', text: '添加模块说明文案', buttonText: '查看详情', jump: { jumpType: 'internal' as const, pageTitle: '小程序首页', pagePath: '/pages/index/index' } } : {}),
     }
     setModules((items) => { const next = [...items]; next.splice(at, 0, item); return next })
     setSelected(`module:${item.id}`); touch()
@@ -340,7 +342,7 @@ export default function ResEditor() {
             </div>)}
             <div className="module-drop-line last" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.stopPropagation(); dropAt(modules.length) }}><span>放置到页面底部</span></div>
           </div>
-          {tabVisible && <button type="button" className={`mini-tabbar${selected === 'tabbar' ? ' selected' : ''}`} style={{ height: Math.max(48, Math.round(tabHeight * .78)), background: tabBackground }} onClick={() => setSelected('tabbar')}>
+          {tabVisible && <button type="button" className={`mini-tabbar${selected === 'tabbar' ? ' selected' : ''}`} style={{ height: Math.max(48, Math.round(tabHeight * .78)) }} onClick={() => setSelected('tabbar')}>
             {tabs.filter((item) => item.enabled).map((item, index) => <span key={item.id} className={index === 0 ? 'active' : ''}>
               <i>{(index === 0 ? item.activeIcon : item.icon) ? <img src={(index === 0 ? item.activeIcon : item.icon) || item.icon} alt="" /> : tabFallback(index)}</i><em>{item.name}</em>
             </span>)}
@@ -355,7 +357,6 @@ export default function ResEditor() {
             <Switch checked={selectedModule.visible} checkedChildren="展示" unCheckedChildren="隐藏" onChange={(visible) => updateModule({ visible })} /></div>
           <Divider />
           {heightEditor(selectedModule.height, (height) => updateModule({ height }))}
-          <div className="inspector-field"><label>背景颜色</label><div className="color-field"><Input type="color" value={selectedModule.background} onChange={(event) => updateModule({ background: event.target.value })} /><Input value={selectedModule.background} onChange={(event) => updateModule({ background: event.target.value })} /></div></div>
           {selectedModule.type === 'search' && <div className="inspector-field"><label>搜索提示文案</label><Input value={selectedModule.text} maxLength={20} showCount onChange={(event) => updateModule({ text: event.target.value })} /></div>}
           {selectedModule.type === 'notice' && <div className="inspector-field"><label>公告内容</label><Input.TextArea value={selectedModule.text} maxLength={40} showCount autoSize={{ minRows: 2, maxRows: 4 }} onChange={(event) => updateModule({ text: event.target.value })} /></div>}
           {['activity', 'course'].includes(selectedModule.type) && <div className="inspector-field"><label>模块标题</label><Input value={selectedModule.title} maxLength={12} showCount onChange={(event) => updateModule({ title: event.target.value })} /></div>}
@@ -364,7 +365,7 @@ export default function ResEditor() {
             <div className="inspector-field"><label>轮播间隔</label><Space.Compact block><InputNumber min={1} max={30} value={selectedModule.interval || 3} onChange={(interval) => updateModule({ interval: interval || 3 })} style={{ width: '100%' }} /><Button disabled>秒</Button></Space.Compact></div>
             <div className="inspector-tip"><PictureOutlined /><span>每张图片可分别跳转到外部链接、小程序内部页面或外部小程序，最多添加 10 张。</span></div>
             <Collapse size="small" accordion defaultActiveKey={[selectedModule.banners?.[0]?.id || 1]} items={bannerItems} className="config-collapse" />
-            {(selectedModule.banners?.length || 0) < 10 && <Button block icon={<PlusOutlined />} onClick={() => { const id = Math.max(0, ...(selectedModule.banners || []).map((item) => item.id)) + 1; updateModule({ banners: [...(selectedModule.banners || []), { id, name: `轮播图 ${id}`, image: '', jumpType: 'internal', pagePath: '/pages/index/index' }] }) }}>添加轮播图</Button>}
+            {(selectedModule.banners?.length || 0) < 10 && <Button block icon={<PlusOutlined />} onClick={() => { const id = Math.max(0, ...(selectedModule.banners || []).map((item) => item.id)) + 1; updateModule({ banners: [...(selectedModule.banners || []), { id, name: `轮播图 ${id}`, image: '', jumpType: 'internal', pageTitle: '小程序首页', pagePath: '/pages/index/index' }] }) }}>添加轮播图</Button>}
           </>}
           {selectedModule.type === 'quickNav' && <><Divider>八大金刚入口</Divider><div className="inspector-tip"><AppstoreOutlined /><span>系统预置 8 个入口，可逐个修改名称、跳转页面与图标。</span></div><Collapse size="small" accordion items={quickItems} className="config-collapse" /></>}
           {selectedModule.type === 'content' && <>
@@ -373,21 +374,20 @@ export default function ResEditor() {
             <Divider>内容卡片</Divider>
             <div className="inspector-tip"><ReadOutlined /><span>配置内容标题、说明、图标和跳转目标，可按需控制单项展示。</span></div>
             <Collapse size="small" accordion items={contentItems} className="config-collapse" />
-            {(selectedModule.contentItems?.length || 0) < 8 && <Button block icon={<PlusOutlined />} onClick={() => { const id = Math.max(0, ...(selectedModule.contentItems || []).map((item) => item.id)) + 1; updateModule({ contentItems: [...(selectedModule.contentItems || []), { id, title: '新内容', subtitle: '内容说明', icon: '', enabled: true, jumpType: 'internal', pagePath: '/pages/index/index' }] }) }}>添加内容卡片</Button>}
+            {(selectedModule.contentItems?.length || 0) < 8 && <Button block icon={<PlusOutlined />} onClick={() => { const id = Math.max(0, ...(selectedModule.contentItems || []).map((item) => item.id)) + 1; updateModule({ contentItems: [...(selectedModule.contentItems || []), { id, title: '新内容', subtitle: '内容说明', icon: '', enabled: true, jumpType: 'internal', pageTitle: '小程序首页', pagePath: '/pages/index/index' }] }) }}>添加内容卡片</Button>}
           </>}
           {selectedModule.type === 'custom' && <>
             <div className="inspector-field"><label>模块标题</label><Input value={selectedModule.title} maxLength={18} showCount onChange={(event) => updateModule({ title: event.target.value })} /></div>
             <div className="inspector-field"><label>说明文案</label><Input.TextArea value={selectedModule.text} maxLength={40} showCount autoSize={{ minRows: 2, maxRows: 4 }} onChange={(event) => updateModule({ text: event.target.value })} /></div>
             <div className="inspector-field"><label>按钮文案</label><Input value={selectedModule.buttonText} maxLength={8} showCount onChange={(event) => updateModule({ buttonText: event.target.value })} /></div>
             <div className="inspector-field"><label>模块图片</label><ImageUpload value={selectedModule.image} label="自定义模块图片" maxMB={5} onChange={(image) => updateModule({ image })} /></div>
-            <Divider>点击跳转</Divider><JumpTargetFields target={selectedModule.jump || { jumpType: 'internal', pagePath: '/pages/index/index' }} onChange={(patch) => updateModule({ jump: { ...(selectedModule.jump || { jumpType: 'internal' }), ...patch } })} />
+            <Divider>点击跳转</Divider><JumpTargetFields target={selectedModule.jump || { jumpType: 'internal', pageTitle: '小程序首页', pagePath: '/pages/index/index' }} onChange={(patch) => updateModule({ jump: { ...(selectedModule.jump || { jumpType: 'internal', pageTitle: '小程序首页' }), ...patch } })} />
           </>}
         </> : selected === 'tabbar' ? <>
           <div className="panel-heading"><div><b>底部菜单设置</b><span>固定显示在小程序页面底部</span></div>
             <Switch checked={tabVisible} checkedChildren="展示" unCheckedChildren="隐藏" onChange={(visible) => { setTabVisible(visible); touch() }} /></div>
           <Divider />
           {heightEditor(tabHeight, (height) => { setTabHeight(height); touch() }, 48, 120)}
-          <div className="inspector-field"><label>背景颜色</label><div className="color-field"><Input type="color" value={tabBackground} onChange={(event) => { setTabBackground(event.target.value); touch() }} /><Input value={tabBackground} onChange={(event) => { setTabBackground(event.target.value); touch() }} /></div></div>
           <Divider>菜单与图标</Divider><div className="inspector-tip"><MenuOutlined /><span>支持 2–5 个菜单，每项分别配置默认图标、选中图标和页面路径。</span></div>
           <Collapse size="small" accordion defaultActiveKey={[1]} items={tabItems} className="config-collapse" />
           {tabs.length < 5 && <Button block icon={<PlusOutlined />} onClick={() => { const id = Math.max(...tabs.map((item) => item.id)) + 1; setTabs((items) => [...items, { id, name: '新菜单', path: '/pages/index', icon: '', activeIcon: '', enabled: true }]); touch() }}>新增菜单</Button>}

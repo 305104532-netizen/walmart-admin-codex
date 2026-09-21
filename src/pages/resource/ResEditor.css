@@ -183,8 +183,6 @@
 .editor-field-head .ant-typography { font-size:11px; }
 .height-editor .ant-slider { margin:13px 7px 0; }
 .inspector-field { margin-bottom:18px; }
-.color-field { display:grid; grid-template-columns:52px minmax(0,1fr); gap:8px; }
-.color-field input[type=color] { height:32px; padding:3px; cursor:pointer; }
 .inspector-tip { margin-bottom:12px; padding:10px; border-radius:8px; display:flex; align-items:flex-start; gap:8px; color:#175cd3; background:#eff8ff; font-size:11px; line-height:1.55; }
 .inspector-tip .anticon { margin-top:2px; }
 .config-collapse { margin-bottom:14px; }
