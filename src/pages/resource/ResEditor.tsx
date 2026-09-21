@@ -15,16 +15,17 @@ import './ResEditor.css'
 
 type ModuleType = 'search' | 'banner' | 'quickNav' | 'content' | 'custom' | 'notice' | 'activity' | 'course'
 type JumpType = 'internal' | 'external' | 'miniProgram'
-type JumpTarget = { jumpType: JumpType; pageTitle?: string; url?: string; pagePath?: string; appId?: string; miniPath?: string }
+type SubscriptionConfig = { enabled: boolean; templateName?: string; templateId?: string; popupLimit: number }
+type JumpTarget = { jumpType: JumpType; pageTitle?: string; url?: string; pagePath?: string; appId?: string; miniPath?: string; subscription?: SubscriptionConfig }
 type BannerItem = JumpTarget & { id: number; image: string; name: string }
 type ContentItem = JumpTarget & { id: number; title: string; subtitle: string; icon: string; enabled: boolean }
 type HomeModule = {
   id: number; type: ModuleType; name: string; height: number; visible: boolean
   background: string; title?: string; text?: string; image?: string; buttonText?: string
-  banners?: BannerItem[]; interval?: number; contentItems?: ContentItem[]; layout?: 'grid' | 'list'; jump?: JumpTarget
+  banners?: BannerItem[]; interval?: number; contentItems?: ContentItem[]; layout?: 'grid' | 'list'; jump?: JumpTarget; subscription?: SubscriptionConfig
 }
 type NavItem = {
-  id: number; name: string; path: string; icon: string; activeIcon?: string; enabled: boolean
+  id: number; name: string; path: string; icon: string; activeIcon?: string; enabled: boolean; subscription?: SubscriptionConfig
 }
 type ModuleDefinition = {
   type: ModuleType; name: string; description: string; icon: ReactNode; defaultHeight: number
@@ -129,6 +130,22 @@ function JumpTargetFields({ target, onChange }: { target: JumpTarget; onChange: 
       <div><label>外部小程序页面路径</label><Input value={target.miniPath} placeholder="pages/index/index" onChange={(event) => onChange({ miniPath: event.target.value })} /></div>
     </>}
   </Space>
+}
+
+function SubscriptionFields({ value, onChange, triggerLabel = '点击此元素时' }: { value?: SubscriptionConfig; onChange: (next: SubscriptionConfig) => void; triggerLabel?: string }) {
+  const current = value || { enabled: false, popupLimit: 1 }
+  return <div className={`subscription-config${current.enabled ? ' enabled' : ''}`}>
+    <div className="subscription-head">
+      <span><BellOutlined /><b>小程序订阅消息</b><em>{triggerLabel}</em></span>
+      <Switch size="small" checked={current.enabled} checkedChildren="启用" unCheckedChildren="关闭" onChange={(enabled) => onChange({ ...current, enabled })} />
+    </div>
+    {current.enabled && <Space orientation="vertical" size={10} className="subscription-fields">
+      <div><label>订阅消息模板名称</label><Input value={current.templateName} placeholder="例如：活动开始提醒" maxLength={30} showCount onChange={(event) => onChange({ ...current, templateName: event.target.value })} /></div>
+      <div><label>订阅消息模板 ID</label><Input value={current.templateId} placeholder="填写微信公众平台模板 ID" onChange={(event) => onChange({ ...current, templateId: event.target.value })} /></div>
+      <div><label>订阅消息弹出次数</label><Space.Compact block><InputNumber min={1} max={99} value={current.popupLimit} onChange={(popupLimit) => onChange({ ...current, popupLimit: popupLimit || 1 })} style={{ width: '100%' }} /><Button disabled>次/用户</Button></Space.Compact></div>
+      <Typography.Text type="secondary">达到设置次数后，不再向同一用户弹出订阅授权。</Typography.Text>
+    </Space>}
+  </div>
 }
 
 function BannerPreview({ module }: { module: HomeModule }) {
@@ -255,6 +272,7 @@ export default function ResEditor() {
       <div><label>入口名称</label><Input value={item.name} maxLength={8} showCount onChange={(event) => updateQuick(item.id, { name: event.target.value })} /></div>
       <div><label>跳转页面</label><Input value={item.path} onChange={(event) => updateQuick(item.id, { path: event.target.value })} /></div>
       <div><label>入口图标</label><IconUploadField value={item.icon} label={`${item.name}图标`} onChange={(icon) => updateQuick(item.id, { icon })} /></div>
+      <SubscriptionFields value={item.subscription} triggerLabel="点击此入口时" onChange={(subscription) => updateQuick(item.id, { subscription })} />
       <div className="switch-field"><label>展示入口</label><Switch checked={item.enabled} onChange={(enabled) => updateQuick(item.id, { enabled })} /></div>
     </Space>,
   }))
@@ -267,6 +285,7 @@ export default function ResEditor() {
       <div><label>页面路径</label><Input value={item.path} onChange={(event) => updateTab(item.id, { path: event.target.value })} /></div>
       <div><label>默认图标</label><IconUploadField value={item.icon} label={`${item.name}默认图标`} onChange={(icon) => updateTab(item.id, { icon })} /></div>
       <div><label>选中图标</label><IconUploadField value={item.activeIcon || ''} label={`${item.name}选中图标`} onChange={(activeIcon) => updateTab(item.id, { activeIcon })} /></div>
+      <SubscriptionFields value={item.subscription} triggerLabel="点击此菜单时" onChange={(subscription) => updateTab(item.id, { subscription })} />
       <div className="switch-field"><label>展示菜单</label><Switch checked={item.enabled} onChange={(enabled) => updateTab(item.id, { enabled })} /></div>
     </Space>,
   }))
@@ -278,6 +297,7 @@ export default function ResEditor() {
       <div><label>轮播图名称</label><Input value={item.name} maxLength={20} showCount onChange={(event) => updateBanner(item.id, { name: event.target.value })} /></div>
       <div><label>轮播图片</label><ImageUpload value={item.image} label={`第 ${index + 1} 张轮播图片`} maxMB={5} onChange={(image) => updateBanner(item.id, { image })} /></div>
       <JumpTargetFields target={item} onChange={(patch) => updateBanner(item.id, patch)} />
+      <SubscriptionFields value={item.subscription} triggerLabel="点击该 Banner 图片时" onChange={(subscription) => updateBanner(item.id, { subscription })} />
       {(selectedModule?.banners?.length || 0) > 1 && <Button danger block icon={<DeleteOutlined />} onClick={() => updateModule({ banners: selectedModule?.banners?.filter((banner) => banner.id !== item.id) })}>删除此轮播图</Button>}
     </Space>,
   }))
@@ -290,6 +310,7 @@ export default function ResEditor() {
       <div><label>辅助说明</label><Input value={item.subtitle} maxLength={10} showCount onChange={(event) => updateContent(item.id, { subtitle: event.target.value })} /></div>
       <div><label>内容图标</label><IconUploadField value={item.icon} label={`${item.title}图标`} onChange={(icon) => updateContent(item.id, { icon })} /></div>
       <JumpTargetFields target={item} onChange={(patch) => updateContent(item.id, patch)} />
+      <SubscriptionFields value={item.subscription} triggerLabel="点击此内容卡片时" onChange={(subscription) => updateContent(item.id, { subscription })} />
       <div className="switch-field"><label>展示此内容</label><Switch checked={item.enabled} onChange={(enabled) => updateContent(item.id, { enabled })} /></div>
       <Button danger block icon={<DeleteOutlined />} onClick={() => updateModule({ contentItems: selectedModule?.contentItems?.filter((content) => content.id !== item.id) })}>删除此内容</Button>
     </Space>,
@@ -360,6 +381,7 @@ export default function ResEditor() {
           {selectedModule.type === 'search' && <div className="inspector-field"><label>搜索提示文案</label><Input value={selectedModule.text} maxLength={20} showCount onChange={(event) => updateModule({ text: event.target.value })} /></div>}
           {selectedModule.type === 'notice' && <div className="inspector-field"><label>公告内容</label><Input.TextArea value={selectedModule.text} maxLength={40} showCount autoSize={{ minRows: 2, maxRows: 4 }} onChange={(event) => updateModule({ text: event.target.value })} /></div>}
           {['activity', 'course'].includes(selectedModule.type) && <div className="inspector-field"><label>模块标题</label><Input value={selectedModule.title} maxLength={12} showCount onChange={(event) => updateModule({ title: event.target.value })} /></div>}
+          {['search', 'notice', 'activity', 'course'].includes(selectedModule.type) && <><Divider>点击订阅消息</Divider><SubscriptionFields value={selectedModule.subscription} triggerLabel="点击此组件内容时" onChange={(subscription) => updateModule({ subscription })} /></>}
           {selectedModule.type === 'banner' && <>
             <Divider>轮播设置</Divider>
             <div className="inspector-field"><label>轮播间隔</label><Space.Compact block><InputNumber min={1} max={30} value={selectedModule.interval || 3} onChange={(interval) => updateModule({ interval: interval || 3 })} style={{ width: '100%' }} /><Button disabled>秒</Button></Space.Compact></div>
@@ -382,6 +404,7 @@ export default function ResEditor() {
             <div className="inspector-field"><label>按钮文案</label><Input value={selectedModule.buttonText} maxLength={8} showCount onChange={(event) => updateModule({ buttonText: event.target.value })} /></div>
             <div className="inspector-field"><label>模块图片</label><ImageUpload value={selectedModule.image} label="自定义模块图片" maxMB={5} onChange={(image) => updateModule({ image })} /></div>
             <Divider>点击跳转</Divider><JumpTargetFields target={selectedModule.jump || { jumpType: 'internal', pageTitle: '小程序首页', pagePath: '/pages/index/index' }} onChange={(patch) => updateModule({ jump: { ...(selectedModule.jump || { jumpType: 'internal', pageTitle: '小程序首页' }), ...patch } })} />
+            <SubscriptionFields value={selectedModule.jump?.subscription} triggerLabel="点击模块按钮时" onChange={(subscription) => updateModule({ jump: { ...(selectedModule.jump || { jumpType: 'internal', pageTitle: '小程序首页' }), subscription } })} />
           </>}
         </> : selected === 'tabbar' ? <>
           <div className="panel-heading"><div><b>底部菜单设置</b><span>固定显示在小程序页面底部</span></div>
