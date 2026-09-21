@@ -75,6 +75,14 @@ function newBlock(type: BlockType, image?: string): PageBlock {
   return { ...base, text: '订阅活动提醒，不错过重要消息', buttonText: '立即订阅', template: '活动开始提醒', templateId: '', popupLimit: 1, hotspotX: 10, hotspotY: 35, hotspotWidth: 80, hotspotHeight: 16 }
 }
 
+function previewBlocksForPage(page: MiniProgramPage) {
+  const types: BlockType[] = ['banner', 'text', 'image', 'text', 'hotspot', 'video']
+  return Array.from({ length: page.componentCount }, (_, index) => {
+    const block = newBlock(types[index % types.length])
+    return block.type === 'text' ? { ...block, text: `${page.title} · 内容模块 ${index + 1}` } : block
+  })
+}
+
 function formatNumber(value: number) {
   return new Intl.NumberFormat('zh-CN').format(value)
 }
@@ -120,6 +128,8 @@ export default function ResPages() {
   const [sunPage, setSunPage] = useState<MiniProgramPage>()
   const [sunChannel, setSunChannel] = useState('all')
   const [builderOpen, setBuilderOpen] = useState(false)
+  const [builderEditing, setBuilderEditing] = useState<MiniProgramPage>()
+  const [pageLayouts, setPageLayouts] = useState<Record<string, PageBlock[]>>({})
   const [blocks, setBlocks] = useState<PageBlock[]>([])
   const [selectedId, setSelectedId] = useState<number>()
   const [draggingId, setDraggingId] = useState<number>()
@@ -199,13 +209,15 @@ export default function ResPages() {
     messageApi.success('页面已删除')
   }
 
-  const openBuilder = () => {
+  const openBuilder = (page?: MiniProgramPage) => {
     const suffix = dayjs().format('MMDD-HHmm')
     builderForm.setFieldsValue({
-      title: '', path: '/pages/temp/page-' + suffix, period: [dayjs(), dayjs().add(30, 'day')],
-      shareTitle: '', shareCover: '',
+      title: page?.title ?? '', path: page?.path ?? '/pages/temp/page-' + suffix,
+      period: page?.validFrom && page.validTo ? [dayjs(page.validFrom), dayjs(page.validTo)] : [dayjs(), dayjs().add(30, 'day')],
+      shareTitle: page?.shareTitle ?? '', shareCover: page?.shareCover ?? '',
     })
-    setBlocks([])
+    setBuilderEditing(page)
+    setBlocks(page ? (pageLayouts[page.id] ?? previewBlocksForPage(page)) : [])
     setSelectedId(undefined)
     setBuilderTab('page')
     setBuilderOpen(true)
@@ -351,14 +363,15 @@ export default function ResPages() {
     const end = values.period?.[1]
     const nextStatus: TempPageStatus = asDraft ? 'draft' : start?.isAfter(dayjs(), 'day') ? 'scheduled' : 'online'
     const next: MiniProgramPage = {
-      id: 'temp-' + Date.now(), title: values.title, path: values.path, kind: 'temporary', pv: 0, uv: 0,
-      channels: [], validFrom: start?.format('YYYY-MM-DD'), validTo: end?.format('YYYY-MM-DD'), status: nextStatus,
+      ...(builderEditing ?? { id: 'temp-' + Date.now(), kind: 'temporary' as const, pv: 0, uv: 0, channels: [] }),
+      title: values.title, path: values.path, validFrom: start?.format('YYYY-MM-DD'), validTo: end?.format('YYYY-MM-DD'), status: nextStatus,
       shareTitle: values.shareTitle || values.title, shareCover: values.shareCover || '',
       updatedAt: dayjs().format('YYYY-MM-DD HH:mm'), componentCount: blocks.length,
     }
-    setPages((current) => [next, ...current])
+    setPages((current) => builderEditing ? current.map((page) => page.id === next.id ? next : page) : [next, ...current])
+    setPageLayouts((current) => ({ ...current, [next.id]: blocks }))
     setBuilderOpen(false)
-    messageApi.success(asDraft ? '草稿已保存' : '临时页面已创建并发布')
+    messageApi.success(builderEditing ? (asDraft ? '页面修改已保存为草稿' : '临时页面已更新并发布') : (asDraft ? '草稿已保存' : '临时页面已创建并发布'))
   }
 
   const sunCodeValue = useMemo(() => {
@@ -409,7 +422,7 @@ export default function ResPages() {
     {
       title: '操作', key: 'actions', fixed: 'right' as const, width: 250,
       render: (_: unknown, page: MiniProgramPage) => <Space size={2}>
-        <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openEdit(page)}>编辑</Button>
+        <Button type="link" size="small" icon={<EditOutlined />} onClick={() => page.kind === 'temporary' ? openBuilder(page) : openEdit(page)}>编辑</Button>
         <Button type="link" size="small" icon={<QrcodeOutlined />} onClick={() => { setSunPage(page); setSunChannel('all') }}>太阳码</Button>
         <Popconfirm title="删除页面" description={'确认删除“' + page.title + '”吗？'} okText="删除" cancelText="取消" okButtonProps={{ danger: true }} onConfirm={() => deletePage(page)}>
           <Button type="link" danger size="small" icon={<DeleteOutlined />}>删除</Button>
@@ -424,7 +437,7 @@ export default function ResPages() {
   return <>{messageContextHolder}<div className="temp-pages">
     <div className="temp-pages-header">
       <div><Typography.Title level={4}>小程序页面管理</Typography.Title><Typography.Text type="secondary">统一管理小程序系统页面和临时运营页面，查看流量、配置渠道与分享素材</Typography.Text></div>
-      <Button type="primary" size="large" icon={<PlusOutlined />} onClick={openBuilder}>新建临时页面</Button>
+      <Button type="primary" size="large" icon={<PlusOutlined />} onClick={() => openBuilder()}>新建临时页面</Button>
     </div>
 
     <Row gutter={[16, 16]} className="page-metrics">
@@ -474,8 +487,8 @@ export default function ResPages() {
       </Space>}
     </Modal>
 
-    <Drawer open={builderOpen} onClose={() => setBuilderOpen(false)} title={<Space><span>新建临时页面</span><Tag color="blue">可视化搭建</Tag></Space>} size="min(1380px, 98vw)"
-      extra={<Space><Button onClick={() => void saveNewPage(true)}>保存草稿</Button><Button type="primary" onClick={() => void saveNewPage(false)}>创建并发布</Button></Space>} styles={{ body: { padding: 0, background: '#F3F5F8' } }}>
+    <Drawer open={builderOpen} onClose={() => setBuilderOpen(false)} title={<Space><span>{builderEditing ? `编辑临时页面 · ${builderEditing.title}` : '新建临时页面'}</span><Tag color="blue">可视化搭建</Tag></Space>} size="min(1380px, 98vw)"
+      extra={<Space><Button onClick={() => void saveNewPage(true)}>{builderEditing ? '保存修改' : '保存草稿'}</Button><Button type="primary" onClick={() => void saveNewPage(false)}>{builderEditing ? '更新并发布' : '创建并发布'}</Button></Space>} styles={{ body: { padding: 0, background: '#F3F5F8' } }}>
       <div className="page-builder">
         <aside className="builder-palette">
           <div className="builder-panel-title"><div><strong>组件库</strong><span>拖拽组件到手机画布</span></div><Tag color="blue">拖拽创建</Tag></div>
