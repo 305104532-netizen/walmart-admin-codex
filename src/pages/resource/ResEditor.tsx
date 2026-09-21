@@ -6,7 +6,7 @@ import {
   ReadOutlined, SaveOutlined, SearchOutlined, SoundOutlined, UploadOutlined, UserOutlined,
 } from '@ant-design/icons'
 import {
-  Button, Collapse, Divider, Empty, Input, InputNumber, Segmented, Slider, Space,
+  Button, Collapse, Divider, Empty, Input, InputNumber, Slider, Space,
   Switch, Tag, Tooltip, Typography, Upload, message,
 } from 'antd'
 import ImageUpload from '../../components/ImageUpload'
@@ -126,7 +126,6 @@ export default function ResEditor() {
   const [tabBackground, setTabBackground] = useState('#ffffff')
   const [tabVisible, setTabVisible] = useState(true)
   const [selected, setSelected] = useState('module:2')
-  const [device, setDevice] = useState('iPhone 15')
   const [saved, setSaved] = useState(true)
   const dragType = useRef<ModuleType | null>(null)
   const dragIndex = useRef<number | null>(null)
@@ -232,9 +231,8 @@ export default function ResEditor() {
       </aside>
 
       <section className="mini-canvas-stage">
-        <div className="canvas-toolbar"><div><b>实时预览</b><span>蓝色边框表示当前编辑模块</span></div>
-          <Segmented value={device} onChange={(value) => setDevice(String(value))} options={['iPhone 15', 'Android']} /></div>
-        <div className={`mini-phone ${device === 'Android' ? 'android' : ''}`}>
+        <div className="canvas-toolbar"><div><b>实时预览</b><span>蓝色边框表示当前编辑模块</span></div></div>
+        <div className="mini-phone">
           <div className="mini-phone-status"><span>9:41</span><b>沃尔玛卖家服务中心</b><span>••• ◉</span></div>
           <div className="mini-phone-page" onDragOver={(event) => event.preventDefault()} onDrop={() => dropAt(modules.length)}>
             {!modules.length && <Empty description="从左侧添加首页组件" />}

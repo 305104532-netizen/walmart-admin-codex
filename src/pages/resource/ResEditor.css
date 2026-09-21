@@ -60,7 +60,6 @@
   width:390px; max-width:100%; margin:0 auto; border:8px solid #172033; border-radius:34px;
   overflow:hidden; background:#fff; box-shadow:0 20px 48px rgba(18,34,66,.18);
 }
-.mini-phone.android { border-radius:18px; }
 .mini-phone-status {
   height:54px; padding:8px 14px 6px; display:grid; grid-template-columns:45px minmax(0,1fr) 52px;
   align-items:end; gap:6px; background:#fff; font-size:9px;
