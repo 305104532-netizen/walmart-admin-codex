@@ -82,7 +82,6 @@ export const menuConfig: MenuNode[] = [
   {
     key: 'resource', label: '小程序页面管理', icon: createElement(AppstoreOutlined),
     children: [
-      { key: '/resource/banner', label: 'Banner管理' },
       { key: '/resource/popup', label: '弹窗管理' },
       { key: '/resource/editor', label: '页面编辑器' },
       { key: '/resource/pages', label: '临时页面管理' },

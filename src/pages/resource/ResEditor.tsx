@@ -1,21 +1,27 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   AppstoreOutlined, BellOutlined, CheckCircleFilled, DeleteOutlined, DragOutlined,
   EyeInvisibleOutlined, HomeOutlined, MenuOutlined, PictureOutlined, PlusOutlined,
   ReadOutlined, SaveOutlined, SearchOutlined, SoundOutlined, UploadOutlined, UserOutlined,
+  BlockOutlined, LinkOutlined,
 } from '@ant-design/icons'
 import {
-  Button, Collapse, Divider, Empty, Input, InputNumber, Slider, Space,
+  Button, Collapse, Divider, Empty, Input, InputNumber, Select, Slider, Space,
   Switch, Tag, Tooltip, Typography, Upload, message,
 } from 'antd'
 import ImageUpload from '../../components/ImageUpload'
 import './ResEditor.css'
 
-type ModuleType = 'search' | 'banner' | 'quickNav' | 'notice' | 'activity' | 'course'
+type ModuleType = 'search' | 'banner' | 'quickNav' | 'content' | 'custom' | 'notice' | 'activity' | 'course'
+type JumpType = 'internal' | 'external' | 'miniProgram'
+type JumpTarget = { jumpType: JumpType; url?: string; pagePath?: string; appId?: string; miniPath?: string }
+type BannerItem = JumpTarget & { id: number; image: string; name: string }
+type ContentItem = JumpTarget & { id: number; title: string; subtitle: string; icon: string; enabled: boolean }
 type HomeModule = {
   id: number; type: ModuleType; name: string; height: number; visible: boolean
-  background: string; title?: string; text?: string; image?: string
+  background: string; title?: string; text?: string; image?: string; buttonText?: string
+  banners?: BannerItem[]; interval?: number; contentItems?: ContentItem[]; layout?: 'grid' | 'list'; jump?: JumpTarget
 }
 type NavItem = {
   id: number; name: string; path: string; icon: string; activeIcon?: string; enabled: boolean
@@ -28,6 +34,8 @@ const MODULE_LIBRARY: ModuleDefinition[] = [
   { type: 'search', name: '搜索栏', description: '搜索课程、活动与政策', icon: <SearchOutlined />, defaultHeight: 56 },
   { type: 'banner', name: 'Banner 轮播', description: '首页焦点内容轮播', icon: <PictureOutlined />, defaultHeight: 180 },
   { type: 'quickNav', name: '八大金刚', description: '8 个核心业务入口', icon: <AppstoreOutlined />, defaultHeight: 184 },
+  { type: 'content', name: '内容配置', description: '配置卡片内容与跳转', icon: <ReadOutlined />, defaultHeight: 240 },
+  { type: 'custom', name: '自定义模块', description: '自由配置图片与文案', icon: <BlockOutlined />, defaultHeight: 160 },
   { type: 'notice', name: '公告栏', description: '运营通知与政策提醒', icon: <SoundOutlined />, defaultHeight: 52 },
   { type: 'activity', name: '热门活动', description: '展示近期重点活动', icon: <BellOutlined />, defaultHeight: 210 },
   { type: 'course', name: '成长课程', description: '卖家学习内容推荐', icon: <ReadOutlined />, defaultHeight: 196 },
@@ -44,13 +52,26 @@ const TAB_DEFAULTS: NavItem[] = [
   { id: 3, name: '活动中心', path: '/pages/activity/index', icon: '', activeIcon: '', enabled: true },
   { id: 4, name: '我的', path: '/pages/mine/index', icon: '', activeIcon: '', enabled: true },
 ]
+const DEFAULT_BANNERS: BannerItem[] = [
+  { id: 1, name: '首页主视觉', image: '', jumpType: 'internal', pagePath: '/pages/activity/index' },
+  { id: 2, name: '卖家成长专区', image: '', jumpType: 'internal', pagePath: '/pages/growth/index' },
+]
+const DEFAULT_CONTENT: ContentItem[] = [
+  { id: 1, title: '品类洞察', subtitle: '趋势与选品', icon: '', enabled: true, jumpType: 'internal', pagePath: '/pages/content/category' },
+  { id: 2, title: '卖家案例', subtitle: '成功经验', icon: '', enabled: true, jumpType: 'internal', pagePath: '/pages/content/case' },
+  { id: 3, title: '物流方案', subtitle: 'WFS/头程', icon: '', enabled: true, jumpType: 'internal', pagePath: '/pages/content/logistics' },
+  { id: 4, title: '运营干货', subtitle: '实战技巧', icon: '', enabled: true, jumpType: 'internal', pagePath: '/pages/content/operation' },
+]
+const cloneBanners = () => DEFAULT_BANNERS.map((item) => ({ ...item }))
+const cloneContent = () => DEFAULT_CONTENT.map((item) => ({ ...item }))
 const DEFAULT_MODULES: HomeModule[] = [
   { id: 1, type: 'search', name: '搜索栏', height: 56, visible: true, background: '#ffffff', text: '搜索课程、活动、政策' },
-  { id: 2, type: 'banner', name: 'Banner 轮播', height: 180, visible: true, background: '#ffffff', title: '首页焦点图' },
+  { id: 2, type: 'banner', name: 'Banner 轮播', height: 180, visible: true, background: '#ffffff', title: '首页焦点图', banners: cloneBanners(), interval: 3 },
   { id: 3, type: 'quickNav', name: '八大金刚', height: 184, visible: true, background: '#ffffff', title: '常用服务' },
-  { id: 4, type: 'notice', name: '公告栏', height: 52, visible: true, background: '#fff8e8', text: '沃尔玛 2026 卖家扶持政策已上线' },
-  { id: 5, type: 'activity', name: '热门活动', height: 210, visible: true, background: '#ffffff', title: '近期活动' },
-  { id: 6, type: 'course', name: '成长课程', height: 196, visible: true, background: '#ffffff', title: '卖家成长课程' },
+  { id: 4, type: 'content', name: '内容配置', height: 240, visible: true, background: '#f5f6f8', title: '精选内容', contentItems: cloneContent(), layout: 'grid' },
+  { id: 5, type: 'notice', name: '公告栏', height: 52, visible: true, background: '#fff8e8', text: '沃尔玛 2026 卖家扶持政策已上线' },
+  { id: 6, type: 'activity', name: '热门活动', height: 210, visible: true, background: '#ffffff', title: '近期活动' },
+  { id: 7, type: 'course', name: '成长课程', height: 196, visible: true, background: '#ffffff', title: '卖家成长课程' },
 ]
 const QUICK_FALLBACKS = ['店', '活', '学', '课', '算', '策', 'BD', '服']
 function tabFallback(index: number) {
@@ -91,19 +112,55 @@ function QuickIcon({ item, index }: { item: NavItem; index: number }) {
   return item.icon ? <img src={item.icon} alt="" /> : <span>{QUICK_FALLBACKS[index] || '服'}</span>
 }
 
+function JumpTargetFields({ target, onChange }: { target: JumpTarget; onChange: (patch: Partial<JumpTarget>) => void }) {
+  return <Space orientation="vertical" size={10} style={{ width: '100%' }}>
+    <div><label>跳转类型</label><Select value={target.jumpType} style={{ width: '100%' }} onChange={(jumpType) => onChange({ jumpType })} options={[
+      { value: 'internal', label: '小程序内部页面' },
+      { value: 'external', label: '外部链接' },
+      { value: 'miniProgram', label: '外部小程序' },
+    ]} /></div>
+    {target.jumpType === 'internal' && <div><label>小程序页面路径</label><Input value={target.pagePath} placeholder="例如：/pages/activity/index" onChange={(event) => onChange({ pagePath: event.target.value })} /></div>}
+    {target.jumpType === 'external' && <div><label>外部链接</label><Input value={target.url} placeholder="https://" onChange={(event) => onChange({ url: event.target.value })} /></div>}
+    {target.jumpType === 'miniProgram' && <>
+      <div><label>外部小程序 AppID</label><Input value={target.appId} placeholder="wx..." onChange={(event) => onChange({ appId: event.target.value })} /></div>
+      <div><label>外部小程序页面路径</label><Input value={target.miniPath} placeholder="pages/index/index" onChange={(event) => onChange({ miniPath: event.target.value })} /></div>
+    </>}
+  </Space>
+}
+
+function BannerPreview({ module }: { module: HomeModule }) {
+  const banners = module.banners || []
+  const [active, setActive] = useState(0)
+  useEffect(() => {
+    if (banners.length < 2) return
+    const timer = window.setInterval(() => setActive((index) => (index + 1) % banners.length), Math.max(1, module.interval || 3) * 1000)
+    return () => window.clearInterval(timer)
+  }, [banners.length, module.interval])
+  const safeActive = active % Math.max(1, banners.length)
+  const current = banners[safeActive]
+  return <div className="preview-banner" style={current?.image ? { backgroundImage: `url(${current.image})` } : undefined}>
+    {!current?.image && <><b>{current?.name || 'Walmart Marketplace'}</b><span>连接全球增长新机会</span></>}
+    <div className="preview-dots">{banners.map((item, index) => <i key={item.id} className={index === safeActive ? 'active' : ''} />)}</div>
+  </div>
+}
+
 function ModulePreview({ module, quickNav }: { module: HomeModule; quickNav: NavItem[] }) {
   const style = { height: Math.max(42, Math.round(module.height * .68)), background: module.background }
   if (module.type === 'search') return <div className="preview-search" style={style}><SearchOutlined /><span>{module.text}</span></div>
-  if (module.type === 'banner') return <div className="preview-banner-wrap" style={style}>
-    <div className="preview-banner" style={module.image ? { backgroundImage: `url(${module.image})` } : undefined}>
-      {!module.image && <><b>Walmart Marketplace</b><span>连接全球增长新机会</span></>}
-      <div className="preview-dots"><i /><i /><i /></div>
-    </div>
-  </div>
+  if (module.type === 'banner') return <div className="preview-banner-wrap" style={style}><BannerPreview module={module} /></div>
   if (module.type === 'quickNav') return <div className="preview-quick-nav" style={style}>
     {quickNav.filter((item) => item.enabled).map((item, index) => <div key={item.id} className="preview-quick-item">
       <div className="preview-quick-icon"><QuickIcon item={item} index={index} /></div><span>{item.name}</span>
     </div>)}
+  </div>
+  if (module.type === 'content') return <div className={`preview-config-content ${module.layout || 'grid'}`} style={style}>
+    {module.title && <div className="preview-section-title"><b>{module.title}</b><span>更多 ›</span></div>}
+    <div className="preview-config-grid">{(module.contentItems || []).filter((item) => item.enabled).map((item) => <div className="preview-config-card" key={item.id}>
+      <i>{item.icon ? <img src={item.icon} alt="" /> : <LinkOutlined />}</i><p><b>{item.title}</b><span>{item.subtitle}</span></p><em>›</em>
+    </div>)}</div>
+  </div>
+  if (module.type === 'custom') return <div className="preview-custom-module" style={{ ...style, backgroundImage: module.image ? `linear-gradient(90deg,rgba(11,87,208,.9),rgba(79,70,229,.72)),url(${module.image})` : undefined }}>
+    <div><b>{module.title || '自定义模块标题'}</b><span>{module.text || '添加模块说明文案'}</span></div><em>{module.buttonText || '查看详情'} ›</em>
   </div>
   if (module.type === 'notice') return <div className="preview-notice" style={style}><SoundOutlined /><span>{module.text}</span><b>›</b></div>
   if (module.type === 'activity') return <div className="preview-content-section" style={style}>
@@ -144,12 +201,23 @@ export default function ResEditor() {
   const updateTab = (id: number, patch: Partial<NavItem>) => {
     setTabs((items) => items.map((item) => item.id === id ? { ...item, ...patch } : item)); touch()
   }
+  const updateBanner = (id: number, patch: Partial<BannerItem>) => {
+    if (!selectedModule) return
+    updateModule({ banners: (selectedModule.banners || []).map((item) => item.id === id ? { ...item, ...patch } : item) })
+  }
+  const updateContent = (id: number, patch: Partial<ContentItem>) => {
+    if (!selectedModule) return
+    updateModule({ contentItems: (selectedModule.contentItems || []).map((item) => item.id === id ? { ...item, ...patch } : item) })
+  }
   const addModule = (type: ModuleType, at = modules.length) => {
     const definition = MODULE_LIBRARY.find((item) => item.type === type)!
     const item: HomeModule = {
       id: ++nextId.current, type, name: definition.name, height: definition.defaultHeight,
       visible: true, background: type === 'notice' ? '#fff8e8' : '#ffffff', title: definition.name,
       text: type === 'search' ? '搜索课程、活动、政策' : type === 'notice' ? '请输入公告内容' : '',
+      ...(type === 'banner' ? { banners: cloneBanners(), interval: 3 } : {}),
+      ...(type === 'content' ? { contentItems: cloneContent(), layout: 'grid' as const, background: '#f5f6f8' } : {}),
+      ...(type === 'custom' ? { title: '自定义模块标题', text: '添加模块说明文案', buttonText: '查看详情', jump: { jumpType: 'internal' as const, pagePath: '/pages/index/index' } } : {}),
     }
     setModules((items) => { const next = [...items]; next.splice(at, 0, item); return next })
     setSelected(`module:${item.id}`); touch()
@@ -198,6 +266,30 @@ export default function ResEditor() {
       <div><label>默认图标</label><IconUploadField value={item.icon} label={`${item.name}默认图标`} onChange={(icon) => updateTab(item.id, { icon })} /></div>
       <div><label>选中图标</label><IconUploadField value={item.activeIcon || ''} label={`${item.name}选中图标`} onChange={(activeIcon) => updateTab(item.id, { activeIcon })} /></div>
       <div className="switch-field"><label>展示菜单</label><Switch checked={item.enabled} onChange={(enabled) => updateTab(item.id, { enabled })} /></div>
+    </Space>,
+  }))
+  const bannerItems = (selectedModule?.banners || []).map((item, index) => ({
+    key: item.id,
+    label: <Space><PictureOutlined /><span>{index + 1}. {item.name || '未命名轮播图'}</span></Space>,
+    extra: <Tag>{item.jumpType === 'internal' ? '内部页面' : item.jumpType === 'external' ? '外部链接' : '外部小程序'}</Tag>,
+    children: <Space orientation="vertical" size={12} style={{ width: '100%' }}>
+      <div><label>轮播图名称</label><Input value={item.name} maxLength={20} showCount onChange={(event) => updateBanner(item.id, { name: event.target.value })} /></div>
+      <div><label>轮播图片</label><ImageUpload value={item.image} label={`第 ${index + 1} 张轮播图片`} maxMB={5} onChange={(image) => updateBanner(item.id, { image })} /></div>
+      <JumpTargetFields target={item} onChange={(patch) => updateBanner(item.id, patch)} />
+      {(selectedModule?.banners?.length || 0) > 1 && <Button danger block icon={<DeleteOutlined />} onClick={() => updateModule({ banners: selectedModule?.banners?.filter((banner) => banner.id !== item.id) })}>删除此轮播图</Button>}
+    </Space>,
+  }))
+  const contentItems = (selectedModule?.contentItems || []).map((item, index) => ({
+    key: item.id,
+    label: <Space><span className="collapse-icon-dot">{item.icon ? <img src={item.icon} alt="" /> : <LinkOutlined />}</span><span>{index + 1}. {item.title || '未命名内容'}</span></Space>,
+    extra: <Tag color={item.enabled ? 'blue' : 'default'}>{item.enabled ? '展示' : '隐藏'}</Tag>,
+    children: <Space orientation="vertical" size={12} style={{ width: '100%' }}>
+      <div><label>内容标题</label><Input value={item.title} maxLength={8} showCount onChange={(event) => updateContent(item.id, { title: event.target.value })} /></div>
+      <div><label>辅助说明</label><Input value={item.subtitle} maxLength={10} showCount onChange={(event) => updateContent(item.id, { subtitle: event.target.value })} /></div>
+      <div><label>内容图标</label><IconUploadField value={item.icon} label={`${item.title}图标`} onChange={(icon) => updateContent(item.id, { icon })} /></div>
+      <JumpTargetFields target={item} onChange={(patch) => updateContent(item.id, patch)} />
+      <div className="switch-field"><label>展示此内容</label><Switch checked={item.enabled} onChange={(enabled) => updateContent(item.id, { enabled })} /></div>
+      <Button danger block icon={<DeleteOutlined />} onClick={() => updateModule({ contentItems: selectedModule?.contentItems?.filter((content) => content.id !== item.id) })}>删除此内容</Button>
     </Space>,
   }))
 
@@ -267,8 +359,29 @@ export default function ResEditor() {
           {selectedModule.type === 'search' && <div className="inspector-field"><label>搜索提示文案</label><Input value={selectedModule.text} maxLength={20} showCount onChange={(event) => updateModule({ text: event.target.value })} /></div>}
           {selectedModule.type === 'notice' && <div className="inspector-field"><label>公告内容</label><Input.TextArea value={selectedModule.text} maxLength={40} showCount autoSize={{ minRows: 2, maxRows: 4 }} onChange={(event) => updateModule({ text: event.target.value })} /></div>}
           {['activity', 'course'].includes(selectedModule.type) && <div className="inspector-field"><label>模块标题</label><Input value={selectedModule.title} maxLength={12} showCount onChange={(event) => updateModule({ title: event.target.value })} /></div>}
-          {selectedModule.type === 'banner' && <div className="inspector-field"><label>轮播封面</label><ImageUpload value={selectedModule.image} label="轮播封面" maxMB={5} onChange={(image) => updateModule({ image })} /></div>}
+          {selectedModule.type === 'banner' && <>
+            <Divider>轮播设置</Divider>
+            <div className="inspector-field"><label>轮播间隔</label><Space.Compact block><InputNumber min={1} max={30} value={selectedModule.interval || 3} onChange={(interval) => updateModule({ interval: interval || 3 })} style={{ width: '100%' }} /><Button disabled>秒</Button></Space.Compact></div>
+            <div className="inspector-tip"><PictureOutlined /><span>每张图片可分别跳转到外部链接、小程序内部页面或外部小程序，最多添加 10 张。</span></div>
+            <Collapse size="small" accordion defaultActiveKey={[selectedModule.banners?.[0]?.id || 1]} items={bannerItems} className="config-collapse" />
+            {(selectedModule.banners?.length || 0) < 10 && <Button block icon={<PlusOutlined />} onClick={() => { const id = Math.max(0, ...(selectedModule.banners || []).map((item) => item.id)) + 1; updateModule({ banners: [...(selectedModule.banners || []), { id, name: `轮播图 ${id}`, image: '', jumpType: 'internal', pagePath: '/pages/index/index' }] }) }}>添加轮播图</Button>}
+          </>}
           {selectedModule.type === 'quickNav' && <><Divider>八大金刚入口</Divider><div className="inspector-tip"><AppstoreOutlined /><span>系统预置 8 个入口，可逐个修改名称、跳转页面与图标。</span></div><Collapse size="small" accordion items={quickItems} className="config-collapse" /></>}
+          {selectedModule.type === 'content' && <>
+            <div className="inspector-field"><label>模块标题</label><Input value={selectedModule.title} maxLength={12} showCount onChange={(event) => updateModule({ title: event.target.value })} /></div>
+            <div className="inspector-field"><label>内容布局</label><Select value={selectedModule.layout || 'grid'} style={{ width: '100%' }} onChange={(layout) => updateModule({ layout })} options={[{ value: 'grid', label: '双列卡片' }, { value: 'list', label: '单列列表' }]} /></div>
+            <Divider>内容卡片</Divider>
+            <div className="inspector-tip"><ReadOutlined /><span>配置内容标题、说明、图标和跳转目标，可按需控制单项展示。</span></div>
+            <Collapse size="small" accordion items={contentItems} className="config-collapse" />
+            {(selectedModule.contentItems?.length || 0) < 8 && <Button block icon={<PlusOutlined />} onClick={() => { const id = Math.max(0, ...(selectedModule.contentItems || []).map((item) => item.id)) + 1; updateModule({ contentItems: [...(selectedModule.contentItems || []), { id, title: '新内容', subtitle: '内容说明', icon: '', enabled: true, jumpType: 'internal', pagePath: '/pages/index/index' }] }) }}>添加内容卡片</Button>}
+          </>}
+          {selectedModule.type === 'custom' && <>
+            <div className="inspector-field"><label>模块标题</label><Input value={selectedModule.title} maxLength={18} showCount onChange={(event) => updateModule({ title: event.target.value })} /></div>
+            <div className="inspector-field"><label>说明文案</label><Input.TextArea value={selectedModule.text} maxLength={40} showCount autoSize={{ minRows: 2, maxRows: 4 }} onChange={(event) => updateModule({ text: event.target.value })} /></div>
+            <div className="inspector-field"><label>按钮文案</label><Input value={selectedModule.buttonText} maxLength={8} showCount onChange={(event) => updateModule({ buttonText: event.target.value })} /></div>
+            <div className="inspector-field"><label>模块图片</label><ImageUpload value={selectedModule.image} label="自定义模块图片" maxMB={5} onChange={(image) => updateModule({ image })} /></div>
+            <Divider>点击跳转</Divider><JumpTargetFields target={selectedModule.jump || { jumpType: 'internal', pagePath: '/pages/index/index' }} onChange={(patch) => updateModule({ jump: { ...(selectedModule.jump || { jumpType: 'internal' }), ...patch } })} />
+          </>}
         </> : selected === 'tabbar' ? <>
           <div className="panel-heading"><div><b>底部菜单设置</b><span>固定显示在小程序页面底部</span></div>
             <Switch checked={tabVisible} checkedChildren="展示" unCheckedChildren="隐藏" onChange={(visible) => { setTabVisible(visible); touch() }} /></div>

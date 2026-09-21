@@ -48,7 +48,6 @@ import MsgTemplate from './pages/message/MsgTemplate'
 import MsgInbox from './pages/message/MsgInbox'
 import MsgSubscribe from './pages/message/MsgSubscribe'
 // 资源位
-import ResBanner from './pages/resource/ResBanner'
 import ResPopup from './pages/resource/ResPopup'
 import ResEditor from './pages/resource/ResEditor'
 import ResPages from './pages/resource/ResPages'
@@ -115,7 +114,7 @@ export const router = createBrowserRouter([
       { path: 'message/inbox', element: <MsgInbox /> },
       { path: 'message/subscribe', element: <MsgSubscribe /> },
 
-      { path: 'resource/banner', element: <ResBanner /> },
+      { path: 'resource/banner', element: <Navigate to="/resource/editor" replace /> },
       { path: 'resource/popup', element: <ResPopup /> },
       { path: 'resource/editor', element: <ResEditor /> },
       { path: 'resource/pages', element: <ResPages /> },
