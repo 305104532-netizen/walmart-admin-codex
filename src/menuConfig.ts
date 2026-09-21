@@ -80,7 +80,7 @@ export const menuConfig: MenuNode[] = [
     ],
   },
   {
-    key: 'resource', label: '资源位管理', icon: createElement(AppstoreOutlined),
+    key: 'resource', label: '小程序页面管理', icon: createElement(AppstoreOutlined),
     children: [
       { key: '/resource/banner', label: 'Banner管理' },
       { key: '/resource/popup', label: '弹窗管理' },

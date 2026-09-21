@@ -1,302 +1,287 @@
-import { useState, useRef } from 'react'
-import { Card, Row, Col, Button, Space, Modal, Form, Input, message, Empty, Tag, Segmented } from 'antd'
+import { useMemo, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import {
-  PictureOutlined, AppstoreOutlined, SoundOutlined, ReadOutlined, CalendarOutlined,
-  FileTextOutlined, DeleteOutlined, EditOutlined, DragOutlined, MobileOutlined,
+  AppstoreOutlined, BellOutlined, CheckCircleFilled, DeleteOutlined, DragOutlined,
+  EyeInvisibleOutlined, HomeOutlined, MenuOutlined, PictureOutlined, PlusOutlined,
+  ReadOutlined, SaveOutlined, SearchOutlined, SoundOutlined, UploadOutlined, UserOutlined,
 } from '@ant-design/icons'
+import {
+  Button, Collapse, Divider, Empty, Input, InputNumber, Segmented, Slider, Space,
+  Switch, Tag, Tooltip, Typography, Upload, message,
+} from 'antd'
+import ImageUpload from '../../components/ImageUpload'
+import './ResEditor.css'
 
-// ===== 组件库（可拖入画布的物料） =====
-interface BlockType { type: string; label: string; icon: React.ReactNode }
-const PALETTE: BlockType[] = [
-  { type: 'banner', label: '轮播图', icon: <PictureOutlined /> },
-  { type: 'nav', label: '金刚位导航', icon: <AppstoreOutlined /> },
-  { type: 'notice', label: '公告栏', icon: <SoundOutlined /> },
-  { type: 'course', label: '课程推荐', icon: <ReadOutlined /> },
-  { type: 'activity', label: '活动列表', icon: <CalendarOutlined /> },
-  { type: 'news', label: '资讯列表', icon: <FileTextOutlined /> },
-  { type: 'search', label: '搜索框', icon: <FileTextOutlined /> },
-  { type: 'notice-bar', label: '通知条', icon: <SoundOutlined /> },
+type ModuleType = 'search' | 'banner' | 'quickNav' | 'notice' | 'activity' | 'course'
+type HomeModule = {
+  id: number; type: ModuleType; name: string; height: number; visible: boolean
+  background: string; title?: string; text?: string; image?: string
+}
+type NavItem = {
+  id: number; name: string; path: string; icon: string; activeIcon?: string; enabled: boolean
+}
+type ModuleDefinition = {
+  type: ModuleType; name: string; description: string; icon: ReactNode; defaultHeight: number
+}
+
+const MODULE_LIBRARY: ModuleDefinition[] = [
+  { type: 'search', name: '搜索栏', description: '搜索课程、活动与政策', icon: <SearchOutlined />, defaultHeight: 56 },
+  { type: 'banner', name: 'Banner 轮播', description: '首页焦点内容轮播', icon: <PictureOutlined />, defaultHeight: 180 },
+  { type: 'quickNav', name: '八大金刚', description: '8 个核心业务入口', icon: <AppstoreOutlined />, defaultHeight: 184 },
+  { type: 'notice', name: '公告栏', description: '运营通知与政策提醒', icon: <SoundOutlined />, defaultHeight: 52 },
+  { type: 'activity', name: '热门活动', description: '展示近期重点活动', icon: <BellOutlined />, defaultHeight: 210 },
+  { type: 'course', name: '成长课程', description: '卖家学习内容推荐', icon: <ReadOutlined />, defaultHeight: 196 },
 ]
-
-interface Block {
-  id: number
-  type: string
-  label: string
-  props: Record<string, string>
+const QUICK_NAV_DEFAULTS: NavItem[] = [
+  ['沃要开店', '/pages/register/index'], ['活动中心', '/pages/activity/index'],
+  ['成长中心', '/pages/growth/index'], ['卖家大学', '/pages/course/index'],
+  ['佣金计算', '/pages/tools/commission'], ['政策中心', '/pages/policy/index'],
+  ['招商经理', '/pages/bd/index'], ['更多服务', '/pages/service/index'],
+].map(([name, path], index) => ({ id: index + 1, name, path, icon: '', enabled: true }))
+const TAB_DEFAULTS: NavItem[] = [
+  { id: 1, name: '首页', path: '/pages/home/index', icon: '', activeIcon: '', enabled: true },
+  { id: 2, name: '卖家大学', path: '/pages/course/index', icon: '', activeIcon: '', enabled: true },
+  { id: 3, name: '活动中心', path: '/pages/activity/index', icon: '', activeIcon: '', enabled: true },
+  { id: 4, name: '我的', path: '/pages/mine/index', icon: '', activeIcon: '', enabled: true },
+]
+const DEFAULT_MODULES: HomeModule[] = [
+  { id: 1, type: 'search', name: '搜索栏', height: 56, visible: true, background: '#ffffff', text: '搜索课程、活动、政策' },
+  { id: 2, type: 'banner', name: 'Banner 轮播', height: 180, visible: true, background: '#ffffff', title: '首页焦点图' },
+  { id: 3, type: 'quickNav', name: '八大金刚', height: 184, visible: true, background: '#ffffff', title: '常用服务' },
+  { id: 4, type: 'notice', name: '公告栏', height: 52, visible: true, background: '#fff8e8', text: '沃尔玛 2026 卖家扶持政策已上线' },
+  { id: 5, type: 'activity', name: '热门活动', height: 210, visible: true, background: '#ffffff', title: '近期活动' },
+  { id: 6, type: 'course', name: '成长课程', height: 196, visible: true, background: '#ffffff', title: '卖家成长课程' },
+]
+const QUICK_FALLBACKS = ['店', '活', '学', '课', '算', '策', 'BD', '服']
+function tabFallback(index: number) {
+  if (index === 0) return <HomeOutlined />
+  if (index === 1) return <ReadOutlined />
+  if (index === 2) return <AppstoreOutlined />
+  return <UserOutlined />
 }
 
-let uid = 100
-
-// 默认属性
-function defaultProps(type: string): Record<string, string> {
-  switch (type) {
-    case 'banner': return { title: '首页轮播', count: '3', height: '160' }
-    case 'nav': return { title: '金刚位', cols: '4', count: '8' }
-    case 'notice': return { title: '公告栏', text: '沃尔玛2026卖家扶持政策已上线' }
-    case 'course': return { title: '课程推荐', count: '3' }
-    case 'activity': return { title: '近期活动', count: '2' }
-    case 'news': return { title: '资讯', count: '3' }
-    case 'search': return { placeholder: '搜索课程、活动、政策' }
-    case 'notice-bar': return { text: '欢迎入驻沃尔玛全球电商' }
-    default: return {}
-  }
-}
-
-// ===== 手机预览：把区块渲染成小程序视觉 =====
-function PhoneBlock({ block }: { block: Block }) {
-  const p = block.props
-  switch (block.type) {
-    case 'search':
-      return (
-        <div style={{ padding: '8px 12px' }}>
-          <div style={{ background: '#F3F4F6', borderRadius: 16, padding: '7px 14px', color: '#9CA3AF', fontSize: 12 }}>🔍 {p.placeholder}</div>
-        </div>
-      )
-    case 'notice-bar':
-      return (
-        <div style={{ background: '#FEF3C7', color: '#92400E', fontSize: 11, padding: '6px 12px', display: 'flex', gap: 6, alignItems: 'center' }}>
-          📢 <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.text}</span>
-        </div>
-      )
-    case 'banner':
-      return (
-        <div style={{ padding: 10 }}>
-          <div style={{ height: Number(p.height || 140) * 0.7, background: 'linear-gradient(135deg,#1A56DB,#3B82F6)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 13, position: 'relative' }}>
-            Banner 轮播图
-            <div style={{ position: 'absolute', bottom: 8, display: 'flex', gap: 4 }}>
-              {Array.from({ length: Number(p.count || 3) }).map((_, i) => (
-                <span key={i} style={{ width: 6, height: 6, borderRadius: 3, background: i === 0 ? '#fff' : 'rgba(255,255,255,.5)' }} />
-              ))}
-            </div>
-          </div>
-        </div>
-      )
-    case 'nav': {
-      const cols = Number(p.cols || 4)
-      const count = Number(p.count || 8)
-      const names = ['沃要开店', '活动中心', '成长中心', 'AI助手', '佣金计算', '卖家大学', '敬请期待', '敬请期待']
-      return (
-        <div style={{ padding: 10, background: '#fff' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols},1fr)`, gap: 8 }}>
-            {Array.from({ length: count }).map((_, i) => (
-              <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                <div style={{ width: 34, height: 34, borderRadius: 8, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1A56DB', fontSize: 14 }}>◈</div>
-                <span style={{ fontSize: 9, color: '#374151' }}>{names[i % names.length]}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )
+function IconUploadField({ value, onChange, label }: { value: string; onChange: (next: string) => void; label: string }) {
+  const readFile = (file: File) => {
+    if (!['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'].includes(file.type)) {
+      message.error('请上传 PNG、JPG、WEBP 或 SVG 格式图标')
+      return Upload.LIST_IGNORE
     }
-    case 'notice':
-      return (
-        <div style={{ margin: 10, background: '#EFF6FF', borderRadius: 8, padding: '8px 12px', fontSize: 11, color: '#1E40AF', display: 'flex', gap: 6 }}>
-          📣 <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.text}</span>
-        </div>
-      )
-    case 'course':
-      return (
-        <div style={{ padding: 10 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>{p.title}</div>
-          <div style={{ display: 'flex', gap: 8, overflow: 'hidden' }}>
-            {Array.from({ length: Number(p.count || 3) }).map((_, i) => (
-              <div key={i} style={{ flex: '0 0 88px' }}>
-                <div style={{ height: 54, background: '#E5E7EB', borderRadius: 8 }} />
-                <div style={{ fontSize: 9, marginTop: 4, color: '#374151' }}>课程标题{i + 1}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )
-    case 'activity':
-      return (
-        <div style={{ padding: 10 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>{p.title}</div>
-          {Array.from({ length: Number(p.count || 2) }).map((_, i) => (
-            <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-              <div style={{ width: 64, height: 44, background: '#E5E7EB', borderRadius: 6 }} />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 10, fontWeight: 500 }}>活动标题 {i + 1}</div>
-                <div style={{ fontSize: 8, color: '#9CA3AF', marginTop: 2 }}>2026-07-20 · 线上</div>
-                <span style={{ fontSize: 8, color: '#059669' }}>报名中</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      )
-    case 'news':
-      return (
-        <div style={{ padding: 10 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>{p.title}</div>
-          {Array.from({ length: Number(p.count || 3) }).map((_, i) => (
-            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid #F3F4F6' }}>
-              <span style={{ fontSize: 10, color: '#374151' }}>资讯标题 {i + 1}······</span>
-              <span style={{ fontSize: 8, color: '#9CA3AF' }}>{i + 1}天前</span>
-            </div>
-          ))}
-        </div>
-      )
-    default:
-      return <div style={{ padding: 12, textAlign: 'center', color: '#9CA3AF' }}>{block.label}</div>
+    if (file.size > 1024 * 1024) {
+      message.error('图标大小不能超过 1 MB')
+      return Upload.LIST_IGNORE
+    }
+    const reader = new FileReader()
+    reader.onload = () => onChange(String(reader.result || ''))
+    reader.onerror = () => message.error('图标读取失败，请重新上传')
+    reader.readAsDataURL(file)
+    return Upload.LIST_IGNORE
   }
+  return <div className="mini-icon-upload">
+    <div className="mini-icon-preview">{value ? <img src={value} alt={`${label}预览`} /> : <PictureOutlined />}</div>
+    <Space size={6} wrap>
+      <Upload accept=".png,.jpg,.jpeg,.webp,.svg" showUploadList={false} beforeUpload={(file) => readFile(file)}>
+        <Button size="small" icon={<UploadOutlined />}>{value ? '替换图标' : '上传图标'}</Button>
+      </Upload>
+      {value && <Button size="small" type="text" danger onClick={() => onChange('')}>删除</Button>}
+    </Space>
+  </div>
+}
+
+function QuickIcon({ item, index }: { item: NavItem; index: number }) {
+  return item.icon ? <img src={item.icon} alt="" /> : <span>{QUICK_FALLBACKS[index] || '服'}</span>
+}
+
+function ModulePreview({ module, quickNav }: { module: HomeModule; quickNav: NavItem[] }) {
+  const style = { height: Math.max(42, Math.round(module.height * .68)), background: module.background }
+  if (module.type === 'search') return <div className="preview-search" style={style}><SearchOutlined /><span>{module.text}</span></div>
+  if (module.type === 'banner') return <div className="preview-banner-wrap" style={style}>
+    <div className="preview-banner" style={module.image ? { backgroundImage: `url(${module.image})` } : undefined}>
+      {!module.image && <><b>Walmart Marketplace</b><span>连接全球增长新机会</span></>}
+      <div className="preview-dots"><i /><i /><i /></div>
+    </div>
+  </div>
+  if (module.type === 'quickNav') return <div className="preview-quick-nav" style={style}>
+    {quickNav.filter((item) => item.enabled).map((item, index) => <div key={item.id} className="preview-quick-item">
+      <div className="preview-quick-icon"><QuickIcon item={item} index={index} /></div><span>{item.name}</span>
+    </div>)}
+  </div>
+  if (module.type === 'notice') return <div className="preview-notice" style={style}><SoundOutlined /><span>{module.text}</span><b>›</b></div>
+  if (module.type === 'activity') return <div className="preview-content-section" style={style}>
+    <div className="preview-section-title"><b>{module.title}</b><span>更多 ›</span></div>
+    {['跨境电商增长峰会', '沃尔玛新卖家训练营'].map((title, index) => <div className="preview-activity-card" key={title}>
+      <div /><p><b>{title}</b><span>{index ? '线上直播 · 10月12日' : '上海 · 09月28日'}</span>{!index && <em>报名中</em>}</p>
+    </div>)}
+  </div>
+  return <div className="preview-content-section" style={style}>
+    <div className="preview-section-title"><b>{module.title}</b><span>更多 ›</span></div>
+    <div className="preview-course-row">{[1, 2, 3].map((item) => <div key={item}><i /><span>出海实战课程 {item}</span></div>)}</div>
+  </div>
 }
 
 export default function ResEditor() {
-  const [blocks, setBlocks] = useState<Block[]>([
-    { id: 1, type: 'banner', label: '轮播图', props: defaultProps('banner') },
-    { id: 2, type: 'nav', label: '金刚位导航', props: defaultProps('nav') },
-    { id: 3, type: 'notice', label: '公告栏', props: defaultProps('notice') },
-    { id: 4, type: 'course', label: '课程推荐', props: defaultProps('course') },
-  ])
-  const [selected, setSelected] = useState<number | null>(null)
-  const [editBlock, setEditBlock] = useState<Block | null>(null)
-  const [device, setDevice] = useState<string>('iPhone')
-  const [form] = Form.useForm()
+  const [modules, setModules] = useState<HomeModule[]>(DEFAULT_MODULES)
+  const [quickNav, setQuickNav] = useState<NavItem[]>(QUICK_NAV_DEFAULTS)
+  const [tabs, setTabs] = useState<NavItem[]>(TAB_DEFAULTS)
+  const [tabHeight, setTabHeight] = useState(68)
+  const [tabBackground, setTabBackground] = useState('#ffffff')
+  const [tabVisible, setTabVisible] = useState(true)
+  const [selected, setSelected] = useState('module:2')
+  const [device, setDevice] = useState('iPhone 15')
+  const [saved, setSaved] = useState(true)
+  const dragType = useRef<ModuleType | null>(null)
+  const dragIndex = useRef<number | null>(null)
+  const nextId = useRef(20)
 
-  const dragType = useRef<string | null>(null)   // 从物料拖入的类型
-  const dragIndex = useRef<number | null>(null)   // 画布内部拖拽排序的起始索引
-
-  // 物料拖动开始
-  const onPaletteDragStart = (type: string) => { dragType.current = type; dragIndex.current = null }
-  // 画布区块拖动开始
-  const onBlockDragStart = (idx: number) => { dragIndex.current = idx; dragType.current = null }
-
-  // 放到某位置
-  const onDropAt = (targetIdx: number) => {
-    if (dragType.current) {
-      const t = PALETTE.find((x) => x.type === dragType.current)!
-      const nb: Block = { id: ++uid, type: t.type, label: t.label, props: defaultProps(t.type) }
-      setBlocks((bs) => { const next = [...bs]; next.splice(targetIdx, 0, nb); return next })
-      dragType.current = null
-    } else if (dragIndex.current !== null) {
-      const from = dragIndex.current
-      setBlocks((bs) => {
-        const next = [...bs]
-        const [moved] = next.splice(from, 1)
-        next.splice(from < targetIdx ? targetIdx - 1 : targetIdx, 0, moved)
-        return next
-      })
-      dragIndex.current = null
+  const selectedModule = useMemo(() => selected.startsWith('module:')
+    ? modules.find((item) => item.id === Number(selected.replace('module:', ''))) : undefined, [modules, selected])
+  const touch = () => setSaved(false)
+  const updateModule = (patch: Partial<HomeModule>) => {
+    if (!selectedModule) return
+    setModules((items) => items.map((item) => item.id === selectedModule.id ? { ...item, ...patch } : item)); touch()
+  }
+  const updateQuick = (id: number, patch: Partial<NavItem>) => {
+    setQuickNav((items) => items.map((item) => item.id === id ? { ...item, ...patch } : item)); touch()
+  }
+  const updateTab = (id: number, patch: Partial<NavItem>) => {
+    setTabs((items) => items.map((item) => item.id === id ? { ...item, ...patch } : item)); touch()
+  }
+  const addModule = (type: ModuleType, at = modules.length) => {
+    const definition = MODULE_LIBRARY.find((item) => item.type === type)!
+    const item: HomeModule = {
+      id: ++nextId.current, type, name: definition.name, height: definition.defaultHeight,
+      visible: true, background: type === 'notice' ? '#fff8e8' : '#ffffff', title: definition.name,
+      text: type === 'search' ? '搜索课程、活动、政策' : type === 'notice' ? '请输入公告内容' : '',
     }
+    setModules((items) => { const next = [...items]; next.splice(at, 0, item); return next })
+    setSelected(`module:${item.id}`); touch()
   }
-
-  const onDropCanvasEnd = () => onDropAt(blocks.length)
-
-  const remove = (id: number) => { setBlocks((bs) => bs.filter((b) => b.id !== id)); if (selected === id) setSelected(null) }
-
-  const openEdit = (b: Block) => { setEditBlock(b); form.setFieldsValue(b.props) }
-  const saveEdit = () => {
-    const vals = form.getFieldsValue()
-    setBlocks((bs) => bs.map((b) => (b.id === editBlock!.id ? { ...b, props: { ...b.props, ...vals } } : b)))
-    setEditBlock(null); message.success('区块已更新')
+  const dropAt = (target: number) => {
+    if (dragType.current) { addModule(dragType.current, target); dragType.current = null; return }
+    if (dragIndex.current === null) return
+    const source = dragIndex.current
+    setModules((items) => {
+      const next = [...items]; const [moved] = next.splice(source, 1)
+      next.splice(source < target ? target - 1 : target, 0, moved); return next
+    })
+    dragIndex.current = null; touch()
   }
+  const removeModule = (id: number) => {
+    setModules((items) => items.filter((item) => item.id !== id))
+    if (selected === `module:${id}`) setSelected('tabbar')
+    touch()
+  }
+  const save = (publish: boolean) => { setSaved(true); message.success(publish ? '首页配置已发布' : '草稿已保存') }
 
-  const phoneWidth = device === 'iPhone' ? 300 : 320
+  const heightEditor = (height: number, onChange: (value: number) => void, min = 40, max = 500) => <div className="height-editor">
+    <div className="editor-field-head"><label>模块高度</label><Typography.Text type="secondary">小程序实际像素</Typography.Text></div>
+    <Space.Compact block><InputNumber min={min} max={max} value={height} onChange={(value) => onChange(value || min)} style={{ width: '100%' }} /><Button disabled>px</Button></Space.Compact>
+    <Slider min={min} max={max} value={height} onChange={onChange} tooltip={{ formatter: (value) => `${value}px` }} />
+  </div>
 
-  return (
-    <div>
-      <Row gutter={16}>
-        {/* 左：组件库 */}
-        <Col span={5}>
-          <Card title="组件库" size="small" styles={{ body: { padding: 12 } }}>
-            <div style={{ color: '#9CA3AF', fontSize: 12, marginBottom: 10 }}>拖拽组件到中间画布</div>
-            {PALETTE.map((p) => (
-              <div key={p.type} draggable onDragStart={() => onPaletteDragStart(p.type)}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', marginBottom: 8, border: '1px dashed #D1D5DB', borderRadius: 8, cursor: 'grab', background: '#fff', fontSize: 13 }}>
-                <span style={{ color: '#1A56DB' }}>{p.icon}</span>{p.label}
-              </div>
-            ))}
-          </Card>
-        </Col>
+  const quickItems = quickNav.map((item, index) => ({
+    key: item.id,
+    label: <Space><span className="collapse-icon-dot"><QuickIcon item={item} index={index} /></span><span>{index + 1}. {item.name || '未命名入口'}</span></Space>,
+    extra: <Tag color={item.enabled ? 'blue' : 'default'}>{item.enabled ? '展示' : '隐藏'}</Tag>,
+    children: <Space orientation="vertical" size={12} style={{ width: '100%' }}>
+      <div><label>入口名称</label><Input value={item.name} maxLength={8} showCount onChange={(event) => updateQuick(item.id, { name: event.target.value })} /></div>
+      <div><label>跳转页面</label><Input value={item.path} onChange={(event) => updateQuick(item.id, { path: event.target.value })} /></div>
+      <div><label>入口图标</label><IconUploadField value={item.icon} label={`${item.name}图标`} onChange={(icon) => updateQuick(item.id, { icon })} /></div>
+      <div className="switch-field"><label>展示入口</label><Switch checked={item.enabled} onChange={(enabled) => updateQuick(item.id, { enabled })} /></div>
+    </Space>,
+  }))
+  const tabItems = tabs.map((item, index) => ({
+    key: item.id,
+    label: <Space><span className="collapse-icon-dot">{item.icon ? <img src={item.icon} alt="" /> : tabFallback(index)}</span><span>{item.name || '未命名菜单'}</span></Space>,
+    extra: <Tag color={item.enabled ? 'green' : 'default'}>{item.enabled ? '展示' : '隐藏'}</Tag>,
+    children: <Space orientation="vertical" size={12} style={{ width: '100%' }}>
+      <div><label>菜单名称</label><Input value={item.name} maxLength={6} showCount onChange={(event) => updateTab(item.id, { name: event.target.value })} /></div>
+      <div><label>页面路径</label><Input value={item.path} onChange={(event) => updateTab(item.id, { path: event.target.value })} /></div>
+      <div><label>默认图标</label><IconUploadField value={item.icon} label={`${item.name}默认图标`} onChange={(icon) => updateTab(item.id, { icon })} /></div>
+      <div><label>选中图标</label><IconUploadField value={item.activeIcon || ''} label={`${item.name}选中图标`} onChange={(activeIcon) => updateTab(item.id, { activeIcon })} /></div>
+      <div className="switch-field"><label>展示菜单</label><Switch checked={item.enabled} onChange={(enabled) => updateTab(item.id, { enabled })} /></div>
+    </Space>,
+  }))
 
-        {/* 中：画布 */}
-        <Col span={11}>
-          <Card
-            title="首页版面画布"
-            size="small"
-            extra={<Button type="primary" size="small" onClick={() => message.success('版面已发布（mock）')}>保存并发布</Button>}
-          >
-            <div
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={onDropCanvasEnd}
-              style={{ minHeight: 420, background: '#F9FAFB', borderRadius: 8, padding: 10 }}
-            >
-              {blocks.length === 0 && <Empty description="从左侧拖拽组件到此处" style={{ paddingTop: 120 }} />}
-              {blocks.map((b, i) => (
-                <div
-                  key={b.id}
-                  draggable
-                  onDragStart={() => onBlockDragStart(i)}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => { e.stopPropagation(); onDropAt(i) }}
-                  onClick={() => setSelected(b.id)}
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '12px 14px', marginBottom: 8, borderRadius: 8, cursor: 'grab',
-                    background: '#fff', border: selected === b.id ? '2px solid #1A56DB' : '1px solid #E5E7EB',
-                  }}
-                >
-                  <Space><DragOutlined style={{ color: '#9CA3AF' }} /><b style={{ fontSize: 13 }}>{b.label}</b><Tag>{b.type}</Tag></Space>
-                  <Space>
-                    <Button size="small" icon={<EditOutlined />} onClick={(e) => { e.stopPropagation(); openEdit(b) }} />
-                    <Button size="small" danger icon={<DeleteOutlined />} onClick={(e) => { e.stopPropagation(); remove(b.id) }} />
-                  </Space>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </Col>
-
-        {/* 右：手机预览 */}
-        <Col span={8}>
-          <Card
-            title={<Space><MobileOutlined />手机预览（小程序）</Space>}
-            size="small"
-            extra={<Segmented size="small" value={device} onChange={(v) => setDevice(v as string)} options={['iPhone', 'Android']} />}
-            styles={{ body: { display: 'flex', justifyContent: 'center', background: '#F3F4F6', padding: 16 } }}
-          >
-            {/* 手机外壳 */}
-            <div style={{ width: phoneWidth, background: '#111827', borderRadius: 28, padding: 8, boxShadow: '0 8px 30px rgba(0,0,0,.2)' }}>
-              <div style={{ background: '#fff', borderRadius: 22, overflow: 'hidden' }}>
-                {/* 状态栏 */}
-                <div style={{ height: 28, background: '#1A56DB', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 14px', color: '#fff', fontSize: 10 }}>
-                  <span>9:41</span><span>Walmart卖家服务中心</span><span>●●●</span>
-                </div>
-                {/* 内容区 */}
-                <div style={{ height: 520, overflowY: 'auto', background: '#F7F8FA' }}>
-                  {blocks.length === 0 ? <div style={{ padding: 40, textAlign: 'center', color: '#9CA3AF', fontSize: 12 }}>暂无内容</div>
-                    : blocks.map((b) => <PhoneBlock key={b.id} block={b} />)}
-                </div>
-                {/* 底部 tabBar */}
-                <div style={{ height: 44, borderTop: '1px solid #E5E7EB', display: 'flex', background: '#fff' }}>
-                  {['首页', '卖家大学', '活动中心', '我的'].map((t, i) => (
-                    <div key={t} style={{ flex: 1, textAlign: 'center', fontSize: 9, color: i === 0 ? '#1A56DB' : '#9CA3AF', paddingTop: 6 }}>
-                      <div style={{ width: 16, height: 16, margin: '0 auto 2px', borderRadius: 4, background: i === 0 ? '#1A56DB' : '#D1D5DB' }} />{t}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </Card>
-        </Col>
-      </Row>
-
-      {/* 区块属性编辑 */}
-      <Modal title={`编辑区块 - ${editBlock?.label}`} open={!!editBlock} onCancel={() => setEditBlock(null)} onOk={saveEdit}>
-        {editBlock && (
-          <Form form={form} layout="vertical">
-            {Object.keys(editBlock.props).map((k) => (
-              <Form.Item key={k} label={FIELD_LABEL[k] || k} name={k}>
-                <Input />
-              </Form.Item>
-            ))}
-          </Form>
-        )}
-      </Modal>
+  return <div className="mini-home-page">
+    <div className="mini-home-header">
+      <div><Space align="center"><Typography.Title level={4}>小程序首页编辑器</Typography.Title><Tag color="blue">首页</Tag></Space>
+        <Typography.Text type="secondary">像开发者工具一样搭建首页，拖拽排序并实时查看小程序效果</Typography.Text></div>
+      <Space wrap>
+        <span className={saved ? 'save-state saved' : 'save-state'}>{saved ? <CheckCircleFilled /> : '●'} {saved ? '已保存' : '有未保存修改'}</span>
+        <Button icon={<SaveOutlined />} onClick={() => save(false)}>保存草稿</Button><Button type="primary" onClick={() => save(true)}>保存并发布</Button>
+      </Space>
     </div>
-  )
-}
 
-const FIELD_LABEL: Record<string, string> = {
-  title: '标题', count: '数量', height: '高度(px)', cols: '每行列数', text: '文案', placeholder: '占位提示',
+    <div className="mini-home-editor">
+      <aside className="mini-editor-panel mini-library-panel">
+        <div className="panel-heading"><div><b>首页组件</b><span>拖入中间画布，或点击添加</span></div><Tag>{MODULE_LIBRARY.length} 种</Tag></div>
+        <div className="module-library">{MODULE_LIBRARY.map((item) => <button key={item.type} type="button" className="module-library-item" draggable
+          onDragStart={() => { dragType.current = item.type; dragIndex.current = null }} onClick={() => addModule(item.type)}>
+          <span className="module-library-icon">{item.icon}</span><span><b>{item.name}</b><small>{item.description}</small></span><PlusOutlined className="module-add-icon" />
+        </button>)}</div>
+        <Divider />
+        <div className="panel-heading compact"><div><b>页面固定区域</b><span>不参与内容流排序</span></div></div>
+        <button type="button" className={`fixed-area-item${selected === 'tabbar' ? ' selected' : ''}`} onClick={() => setSelected('tabbar')}>
+          <span className="module-library-icon"><MenuOutlined /></span><span><b>底部菜单</b><small>{tabs.filter((item) => item.enabled).length} 个菜单 · {tabHeight}px</small></span>
+        </button>
+        <Divider />
+        <div className="panel-heading compact"><div><b>页面结构</b><span>点击定位并编辑模块</span></div></div>
+        <div className="module-outline">{modules.map((item, index) => <button key={item.id} type="button" className={selected === `module:${item.id}` ? 'selected' : ''} onClick={() => setSelected(`module:${item.id}`)}>
+          <span>{index + 1}</span><b>{item.name}</b><small>{item.height}px</small>{!item.visible && <EyeInvisibleOutlined />}
+        </button>)}</div>
+      </aside>
+
+      <section className="mini-canvas-stage">
+        <div className="canvas-toolbar"><div><b>实时预览</b><span>蓝色边框表示当前编辑模块</span></div>
+          <Segmented value={device} onChange={(value) => setDevice(String(value))} options={['iPhone 15', 'Android']} /></div>
+        <div className={`mini-phone ${device === 'Android' ? 'android' : ''}`}>
+          <div className="mini-phone-status"><span>9:41</span><b>沃尔玛卖家服务中心</b><span>••• ◉</span></div>
+          <div className="mini-phone-page" onDragOver={(event) => event.preventDefault()} onDrop={() => dropAt(modules.length)}>
+            {!modules.length && <Empty description="从左侧添加首页组件" />}
+            {modules.map((module, index) => <div key={module.id}>
+              <div className="module-drop-line" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.stopPropagation(); dropAt(index) }}><span>放置到这里</span></div>
+              <div className={`mini-preview-module${selected === `module:${module.id}` ? ' selected' : ''}${module.visible ? '' : ' hidden-module'}`}
+                draggable onDragStart={() => { dragIndex.current = index; dragType.current = null }} onClick={() => setSelected(`module:${module.id}`)}>
+                <div className="preview-module-toolbar"><span><DragOutlined /> {module.name}</span><em>{module.height}px</em>
+                  <Tooltip title="删除模块"><Button type="text" danger size="small" icon={<DeleteOutlined />} onClick={(event) => { event.stopPropagation(); removeModule(module.id) }} /></Tooltip>
+                </div>
+                {module.visible ? <ModulePreview module={module} quickNav={quickNav} /> : <div className="hidden-module-tip"><EyeInvisibleOutlined /> 当前模块已隐藏</div>}
+              </div>
+            </div>)}
+            <div className="module-drop-line last" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.stopPropagation(); dropAt(modules.length) }}><span>放置到页面底部</span></div>
+          </div>
+          {tabVisible && <button type="button" className={`mini-tabbar${selected === 'tabbar' ? ' selected' : ''}`} style={{ height: Math.max(48, Math.round(tabHeight * .78)), background: tabBackground }} onClick={() => setSelected('tabbar')}>
+            {tabs.filter((item) => item.enabled).map((item, index) => <span key={item.id} className={index === 0 ? 'active' : ''}>
+              <i>{(index === 0 ? item.activeIcon : item.icon) ? <img src={(index === 0 ? item.activeIcon : item.icon) || item.icon} alt="" /> : tabFallback(index)}</i><em>{item.name}</em>
+            </span>)}
+          </button>}
+        </div>
+        <Typography.Text type="secondary" className="canvas-hint"><DragOutlined /> 拖动页面模块调整顺序；预览按比例显示，保存值为小程序实际像素。</Typography.Text>
+      </section>
+
+      <aside className="mini-editor-panel mini-inspector-panel">
+        {selectedModule ? <>
+          <div className="panel-heading"><div><b>{selectedModule.name}设置</b><span>模块 #{modules.findIndex((item) => item.id === selectedModule.id) + 1}</span></div>
+            <Switch checked={selectedModule.visible} checkedChildren="展示" unCheckedChildren="隐藏" onChange={(visible) => updateModule({ visible })} /></div>
+          <Divider />
+          {heightEditor(selectedModule.height, (height) => updateModule({ height }))}
+          <div className="inspector-field"><label>背景颜色</label><div className="color-field"><Input type="color" value={selectedModule.background} onChange={(event) => updateModule({ background: event.target.value })} /><Input value={selectedModule.background} onChange={(event) => updateModule({ background: event.target.value })} /></div></div>
+          {selectedModule.type === 'search' && <div className="inspector-field"><label>搜索提示文案</label><Input value={selectedModule.text} maxLength={20} showCount onChange={(event) => updateModule({ text: event.target.value })} /></div>}
+          {selectedModule.type === 'notice' && <div className="inspector-field"><label>公告内容</label><Input.TextArea value={selectedModule.text} maxLength={40} showCount autoSize={{ minRows: 2, maxRows: 4 }} onChange={(event) => updateModule({ text: event.target.value })} /></div>}
+          {['activity', 'course'].includes(selectedModule.type) && <div className="inspector-field"><label>模块标题</label><Input value={selectedModule.title} maxLength={12} showCount onChange={(event) => updateModule({ title: event.target.value })} /></div>}
+          {selectedModule.type === 'banner' && <div className="inspector-field"><label>轮播封面</label><ImageUpload value={selectedModule.image} label="轮播封面" maxMB={5} onChange={(image) => updateModule({ image })} /></div>}
+          {selectedModule.type === 'quickNav' && <><Divider>八大金刚入口</Divider><div className="inspector-tip"><AppstoreOutlined /><span>系统预置 8 个入口，可逐个修改名称、跳转页面与图标。</span></div><Collapse size="small" accordion items={quickItems} className="config-collapse" /></>}
+        </> : selected === 'tabbar' ? <>
+          <div className="panel-heading"><div><b>底部菜单设置</b><span>固定显示在小程序页面底部</span></div>
+            <Switch checked={tabVisible} checkedChildren="展示" unCheckedChildren="隐藏" onChange={(visible) => { setTabVisible(visible); touch() }} /></div>
+          <Divider />
+          {heightEditor(tabHeight, (height) => { setTabHeight(height); touch() }, 48, 120)}
+          <div className="inspector-field"><label>背景颜色</label><div className="color-field"><Input type="color" value={tabBackground} onChange={(event) => { setTabBackground(event.target.value); touch() }} /><Input value={tabBackground} onChange={(event) => { setTabBackground(event.target.value); touch() }} /></div></div>
+          <Divider>菜单与图标</Divider><div className="inspector-tip"><MenuOutlined /><span>支持 2–5 个菜单，每项分别配置默认图标、选中图标和页面路径。</span></div>
+          <Collapse size="small" accordion defaultActiveKey={[1]} items={tabItems} className="config-collapse" />
+          {tabs.length < 5 && <Button block icon={<PlusOutlined />} onClick={() => { const id = Math.max(...tabs.map((item) => item.id)) + 1; setTabs((items) => [...items, { id, name: '新菜单', path: '/pages/index', icon: '', activeIcon: '', enabled: true }]); touch() }}>新增菜单</Button>}
+        </> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="请在画布中选择一个模块" />}
+      </aside>
+    </div>
+  </div>
 }
