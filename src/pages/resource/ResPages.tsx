@@ -1,5 +1,5 @@
-import { Fragment, useMemo, useState } from 'react'
-import type { DragEvent, ReactNode } from 'react'
+import { Fragment, useMemo, useRef, useState } from 'react'
+import type { DragEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import dayjs from 'dayjs'
 import {
   Alert, Button, Card, Col, DatePicker, Descriptions, Divider, Drawer, Empty, Form, Image, Input,
@@ -36,11 +36,15 @@ interface PageBlock {
   target?: string
   buttonText?: string
   template?: string
+  templateId?: string
+  popupLimit?: number
   hotspotX?: number
   hotspotY?: number
   hotspotWidth?: number
   hotspotHeight?: number
 }
+
+type HotspotDraft = { x: number; y: number; width: number; height: number }
 
 const STATUS_META: Record<TempPageStatus, { label: string; color: string }> = {
   online: { label: '已上线', color: 'success' },
@@ -55,7 +59,7 @@ const PALETTE: Array<{ type: BlockType; label: string; help: string; icon: React
   { type: 'banner', label: 'Banner轮播', help: '多图轮播与跳转', icon: <FileImageOutlined /> },
   { type: 'text', label: '文本编辑', help: '标题、正文与说明', icon: <FontSizeOutlined /> },
   { type: 'hotspot', label: '热区组件', help: '在切图上添加跳转', icon: <AimOutlined /> },
-  { type: 'subscribe', label: '订阅消息', help: '引导用户授权订阅', icon: <NotificationOutlined /> },
+  { type: 'subscribe', label: '订阅消息热区', help: '在预览中圈选触发区域', icon: <NotificationOutlined /> },
 ]
 
 let blockUid = 100
@@ -68,7 +72,7 @@ function newBlock(type: BlockType, image?: string): PageBlock {
   if (type === 'banner') return { ...base, images: [], text: '品牌活动轮播' }
   if (type === 'text') return { ...base, text: '在这里输入页面文案', fontSize: 16, align: 'left' }
   if (type === 'hotspot') return { ...base, text: '点击了解详情', target: '/pages/index/index', hotspotX: 10, hotspotY: 35, hotspotWidth: 80, hotspotHeight: 20 }
-  return { ...base, text: '订阅活动提醒，不错过重要消息', buttonText: '立即订阅', template: '活动开始提醒' }
+  return { ...base, text: '订阅活动提醒，不错过重要消息', buttonText: '立即订阅', template: '活动开始提醒', templateId: '', popupLimit: 1, hotspotX: 10, hotspotY: 35, hotspotWidth: 80, hotspotHeight: 16 }
 }
 
 function formatNumber(value: number) {
@@ -121,6 +125,9 @@ export default function ResPages() {
   const [draggingId, setDraggingId] = useState<number>()
   const [draggingType, setDraggingType] = useState<BlockType>()
   const [dropIndex, setDropIndex] = useState<number>()
+  const [drawingSubscription, setDrawingSubscription] = useState(false)
+  const [hotspotDraft, setHotspotDraft] = useState<HotspotDraft>()
+  const drawStart = useRef<{ x: number; y: number }>()
   const [builderTab, setBuilderTab] = useState('page')
   const [editForm] = Form.useForm()
   const [builderForm] = Form.useForm()
@@ -257,6 +264,53 @@ export default function ResPages() {
     setDraggingId(undefined)
     setDraggingType(undefined)
     setDropIndex(undefined)
+  }
+
+  const pointInDrawingArea = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect()
+    return {
+      x: Math.max(0, Math.min(100, (event.clientX - rect.left) / rect.width * 100)),
+      y: Math.max(0, Math.min(100, (event.clientY - rect.top) / rect.height * 100)),
+    }
+  }
+
+  const startSubscriptionHotspot = () => {
+    setDrawingSubscription(true)
+    setHotspotDraft(undefined)
+    drawStart.current = undefined
+    messageApi.info('请在手机预览中拖动圈选订阅消息触发区域')
+  }
+
+  const beginHotspotDraw = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const point = pointInDrawingArea(event)
+    event.currentTarget.setPointerCapture(event.pointerId)
+    drawStart.current = point
+    setHotspotDraft({ x: point.x, y: point.y, width: 0, height: 0 })
+  }
+
+  const moveHotspotDraw = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!drawStart.current) return
+    const point = pointInDrawingArea(event)
+    const start = drawStart.current
+    setHotspotDraft({ x: Math.min(start.x, point.x), y: Math.min(start.y, point.y), width: Math.abs(point.x - start.x), height: Math.abs(point.y - start.y) })
+  }
+
+  const finishHotspotDraw = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!drawStart.current) return
+    const point = pointInDrawingArea(event)
+    const start = drawStart.current
+    const x = Math.min(start.x, point.x)
+    const y = Math.min(start.y, point.y)
+    const width = Math.max(8, Math.abs(point.x - start.x))
+    const height = Math.max(6, Math.abs(point.y - start.y))
+    const block = { ...newBlock('subscribe'), hotspotX: Math.round(x), hotspotY: Math.round(y), hotspotWidth: Math.round(Math.min(width, 100 - x)), hotspotHeight: Math.round(Math.min(height, 100 - y)) }
+    setBlocks((current) => [...current, block])
+    setSelectedId(block.id)
+    setBuilderTab('component')
+    setDrawingSubscription(false)
+    setHotspotDraft(undefined)
+    drawStart.current = undefined
+    messageApi.success('订阅消息热区已创建')
   }
 
   const dropOnCanvas = (event: DragEvent<HTMLDivElement>, index: number) => {
@@ -431,21 +485,22 @@ export default function ResPages() {
           <Divider titlePlacement="start" plain>基础组件</Divider>
           <div className="palette-grid">{PALETTE.map((item) => <button key={item.type} type="button" draggable className={`palette-item${draggingType === item.type ? ' is-dragging' : ''}`}
             onDragStart={(event) => { event.dataTransfer.effectAllowed = 'copy'; event.dataTransfer.setData(COMPONENT_DRAG_TYPE, item.type); setDraggingType(item.type); setDraggingId(undefined) }} onDragEnd={finishDrag}
-            onClick={() => addBlock(item.type)}><span>{item.icon}</span><strong>{item.label}</strong><small>{item.help}</small><em>拖入画布</em></button>)}</div>
+            onClick={() => item.type === 'subscribe' ? startSubscriptionHotspot() : addBlock(item.type)}><span>{item.icon}</span><strong>{item.label}</strong><small>{item.help}</small><em>{item.type === 'subscribe' ? '点击后圈选' : '拖入画布'}</em></button>)}</div>
         </aside>
 
         <main className="builder-stage">
           <div className="builder-stage-head"><div><strong>手机实时预览</strong><span>{blocks.length} 个组件</span></div><Space><Tag color="green">自动保存</Tag><Button size="small" icon={<EyeOutlined />}>预览</Button></Space></div>
+          {drawingSubscription && <Alert className="hotspot-drawing-alert" type="warning" showIcon title="正在圈选订阅消息热区" description="请在下方手机预览内按住并拖动，松开后完成圈选。" action={<Button size="small" onClick={() => { setDrawingSubscription(false); setHotspotDraft(undefined); drawStart.current = undefined }}>取消圈选</Button>} />}
           <div className="phone-shell">
             <div className="phone-status"><span>9:41</span><span>··· ◉</span></div>
             <div className="phone-nav"><span>‹</span><strong>{builderTitle}</strong><span>•••</span></div>
-            <div className={`phone-canvas${dropIndex !== undefined ? ' is-receiving' : ''}`}
+            <div className={`phone-canvas${dropIndex !== undefined ? ' is-receiving' : ''}${drawingSubscription ? ' is-drawing-hotspot' : ''}`}
               onDragEnter={(event) => { event.preventDefault(); if (event.currentTarget === event.target) setDropIndex(blocks.length) }}
               onDragOver={(event) => { event.preventDefault(); if (event.currentTarget === event.target) setDropIndex(blocks.length) }}
               onDrop={(event) => dropOnCanvas(event, blocks.length)}>
               <CanvasDropZone index={0} active={dropIndex === 0} onDragOver={setDropIndex} onDrop={dropOnCanvas} />
-              {!blocks.length && <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={<span>将左侧组件或本地切图拖到这里<br />开始搭建临时页面</span>} />}
-              {blocks.map((block, index) => <Fragment key={block.id}>
+              {!blocks.some((block) => block.type !== 'subscribe') && <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={<span>将左侧组件或本地切图拖到这里<br />开始搭建临时页面</span>} />}
+              {blocks.map((block, index) => block.type === 'subscribe' ? null : <Fragment key={block.id}>
                 <div className={`phone-block${selectedId === block.id ? ' selected' : ''}${draggingId === block.id ? ' is-dragging' : ''}`} draggable role="group" tabIndex={0} aria-label={`选择并拖动${block.label}`}
                   onDragStart={(event) => { event.stopPropagation(); event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData(BLOCK_DRAG_TYPE, String(block.id)); setDraggingId(block.id); setDraggingType(undefined); setSelectedId(block.id) }} onDragEnd={finishDrag}
                   onDragOver={(event) => { event.preventDefault(); event.stopPropagation(); const rect = event.currentTarget.getBoundingClientRect(); setDropIndex(event.clientY < rect.top + rect.height / 2 ? index : index + 1) }}
@@ -456,6 +511,16 @@ export default function ResPages() {
                 </div>
                 <CanvasDropZone index={index + 1} active={dropIndex === index + 1} onDragOver={setDropIndex} onDrop={dropOnCanvas} />
               </Fragment>)}
+              {blocks.filter((block) => block.type === 'subscribe').map((block) => <button key={block.id} type="button" className={`subscription-hotspot${selectedId === block.id ? ' selected' : ''}`}
+                style={{ left: `${block.hotspotX || 0}%`, top: `${block.hotspotY || 0}%`, width: `${block.hotspotWidth || 10}%`, height: `${block.hotspotHeight || 8}%` }}
+                onClick={(event) => { event.stopPropagation(); setSelectedId(block.id); setBuilderTab('component') }} aria-label={`订阅消息热区：${block.template}`}>
+                <NotificationOutlined /><span>订阅消息热区</span><small>{block.template}</small>
+              </button>)}
+              {drawingSubscription && <div className="hotspot-draw-layer" role="application" aria-label="拖动圈选订阅消息热区"
+                onPointerDown={beginHotspotDraw} onPointerMove={moveHotspotDraw} onPointerUp={finishHotspotDraw}>
+                <span className="hotspot-draw-guide">按住并拖动圈选热区</span>
+                {hotspotDraft && <i className="hotspot-draft" style={{ left: `${hotspotDraft.x}%`, top: `${hotspotDraft.y}%`, width: `${hotspotDraft.width}%`, height: `${hotspotDraft.height}%` }} />}
+              </div>}
             </div>
           </div>
         </main>
@@ -471,7 +536,7 @@ export default function ResPages() {
               <Form.Item label="卡片封面图" name="shareCover"><ImageUpload label="分享卡片封面" maxMB={5} /></Form.Item>
               <ShareCard title={builderShareTitle} cover={builderShareCover} />
             </Form> },
-            { key: 'component', label: '组件配置', children: selectedBlock ? <BlockInspector block={selectedBlock} update={updateBlock} notify={messageApi.success} fail={messageApi.error} /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="请在画布中选择组件" /> },
+            { key: 'component', label: '组件配置', children: selectedBlock ? <BlockInspector block={selectedBlock} update={updateBlock} remove={() => removeBlock(selectedBlock.id)} notify={messageApi.success} fail={messageApi.error} /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="请在画布中选择组件" /> },
           ]} />
         </aside>
       </div>
@@ -490,7 +555,7 @@ function CanvasDropZone({ index, active, onDragOver, onDrop }: { index: number; 
     onDrop={(event) => onDrop(event, index)}><span>放置到这里</span></div>
 }
 
-function BlockInspector({ block, update, notify, fail }: { block: PageBlock; update: (patch: Partial<PageBlock>) => void; notify: (text: string) => void; fail: (text: string) => void }) {
+function BlockInspector({ block, update, remove, notify, fail }: { block: PageBlock; update: (patch: Partial<PageBlock>) => void; remove: () => void; notify: (text: string) => void; fail: (text: string) => void }) {
   return <Space orientation="vertical" size={14} style={{ width: '100%' }}>
     <Alert type="info" showIcon title={block.label} description="修改内容后，手机画布会实时更新。" />
     {block.type === 'image' && <div><Typography.Text strong>组件图片</Typography.Text><div style={{ marginTop: 8 }}><ImageUpload value={block.image} onChange={(image) => update({ image })} label="页面切图" maxMB={8} /></div></div>}
@@ -500,6 +565,17 @@ function BlockInspector({ block, update, notify, fail }: { block: PageBlock; upd
     {block.type === 'hotspot' && <><label>热区文案</label><Input value={block.text} onChange={(event) => update({ text: event.target.value })} /><label>点击跳转页面</label><Input prefix={<LinkOutlined />} value={block.target} onChange={(event) => update({ target: event.target.value })} /><label>热区位置与尺寸（相对画布百分比）</label><Row gutter={[8, 8]}>{[
       ['X', 'hotspotX', block.hotspotX], ['Y', 'hotspotY', block.hotspotY], ['宽度', 'hotspotWidth', block.hotspotWidth], ['高度', 'hotspotHeight', block.hotspotHeight],
     ].map(([label, key, value]) => <Col span={12} key={String(key)}><div className="number-field hotspot-number"><span>{label}</span><InputNumber aria-label={String(label)} min={0} max={100} value={Number(value)} style={{ width: '100%' }} onChange={(next) => update({ [String(key)]: next ?? 0 })} /><span>%</span></div></Col>)}</Row><Alert type="info" showIcon title="位置与尺寸按页面切图宽高的百分比计算，可直接交付小程序渲染。" /></>}
-    {block.type === 'subscribe' && <><label>订阅消息模板</label><Select value={block.template} onChange={(template) => update({ template })} options={[{ value: '活动开始提醒' }, { value: '报名成功通知' }, { value: '课程更新提醒' }, { value: '审核进度通知' }]} /><label>引导说明</label><Input.TextArea rows={3} value={block.text} onChange={(event) => update({ text: event.target.value })} /><label>按钮文案</label><Input value={block.buttonText} onChange={(event) => update({ buttonText: event.target.value })} /></>}
+    {block.type === 'subscribe' && <>
+      <Alert type="success" showIcon title="订阅消息热区" description="用户点击圈选区域时，触发小程序订阅消息授权弹窗。" />
+      <label>订阅消息模板</label><Select value={block.template} onChange={(template) => update({ template })} options={[{ value: '活动开始提醒' }, { value: '报名成功通知' }, { value: '课程更新提醒' }, { value: '审核进度通知' }]} />
+      <label>订阅消息模板 ID</label><Input value={block.templateId} placeholder="填写微信公众平台模板 ID" onChange={(event) => update({ templateId: event.target.value })} />
+      <label>订阅消息弹出次数</label><div className="number-field"><InputNumber min={1} max={99} value={block.popupLimit} style={{ width: '100%' }} onChange={(popupLimit) => update({ popupLimit: popupLimit || 1 })} /><span>次/用户</span></div>
+      <label>授权引导说明</label><Input.TextArea rows={3} value={block.text} onChange={(event) => update({ text: event.target.value })} />
+      <label>热区位置与尺寸（相对预览百分比）</label><Row gutter={[8, 8]}>{[
+        ['X', 'hotspotX', block.hotspotX], ['Y', 'hotspotY', block.hotspotY], ['宽度', 'hotspotWidth', block.hotspotWidth], ['高度', 'hotspotHeight', block.hotspotHeight],
+      ].map(([label, key, value]) => <Col span={12} key={String(key)}><div className="number-field hotspot-number"><span>{label}</span><InputNumber aria-label={String(label)} min={0} max={100} value={Number(value)} style={{ width: '100%' }} onChange={(next) => update({ [String(key)]: next ?? 0 })} /><span>%</span></div></Col>)}</Row>
+      <Typography.Text type="secondary">可在手机预览中重新圈选，或在此精确调整位置和尺寸。</Typography.Text>
+      <Button danger block icon={<DeleteOutlined />} onClick={remove}>删除订阅消息热区</Button>
+    </>}
   </Space>
 }

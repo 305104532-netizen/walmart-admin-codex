@@ -163,8 +163,9 @@
 .phone-status { height: 25px; padding: 5px 18px 0; display: flex; justify-content: space-between; background: #fff; font-size: 10px; font-weight: 600; }
 .phone-nav { height: 47px; padding: 0 14px; display: grid; grid-template-columns: 40px 1fr 40px; align-items: center; text-align: center; border-bottom: 1px solid #edf0f4; }
 .phone-nav strong { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 15px; }
-.phone-canvas { min-height: 590px; max-height: calc(100vh - 238px); overflow-y: auto; background: #f7f8fa; padding: 6px 10px 10px; transition: background .16s, box-shadow .16s; }
+.phone-canvas { position: relative; min-height: 590px; max-height: calc(100vh - 238px); overflow-y: auto; background: #f7f8fa; padding: 6px 10px 10px; transition: background .16s, box-shadow .16s; }
 .phone-canvas.is-receiving { background: #eef5ff; box-shadow: inset 0 0 0 2px rgba(11, 87, 208, .18); }
+.phone-canvas.is-drawing-hotspot { overflow: hidden; box-shadow: inset 0 0 0 2px #7f56d9; }
 .phone-canvas > .ant-empty { margin-top: 180px; }
 .phone-block { position: relative; border: 2px solid transparent; border-radius: 8px; background: #fff; cursor: grab; transition: border-color .16s, opacity .16s, transform .16s; }
 .phone-block:active { cursor: grabbing; }
@@ -199,6 +200,20 @@
 .builder-subscribe { margin: 12px; padding: 14px; border: 1px solid #d8e6fa; border-radius: 10px; background: #f5f9ff; display: grid; grid-template-columns: 26px 1fr auto; gap: 10px; align-items: center; color: var(--page-blue); }
 .builder-subscribe p { margin: 3px 0 0; color: #667085; font-size: 10px; }
 .builder-subscribe button { border: none; border-radius: 12px; color: #fff; background: var(--page-blue); padding: 5px 9px; font-size: 10px; }
+.hotspot-drawing-alert { width: 390px; max-width: 100%; margin: 0 auto 12px; }
+.subscription-hotspot {
+  position: absolute; z-index: 8; min-width: 52px; min-height: 34px; padding: 5px;
+  border: 2px dashed #7f56d9; border-radius: 6px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 2px; color: #5925dc;
+  background: rgba(244, 235, 255, .76); cursor: pointer; overflow: hidden;
+}
+.subscription-hotspot:hover,.subscription-hotspot.selected { border-style: solid; background: rgba(234, 218, 255, .9); box-shadow: 0 0 0 3px rgba(127, 86, 217, .16); }
+.subscription-hotspot>span,.subscription-hotspot>small { max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.subscription-hotspot>span { font-size: 9px; font-weight: 700; }
+.subscription-hotspot>small { font-size: 8px; opacity: .75; }
+.hotspot-draw-layer { position: absolute; z-index: 20; inset: 0; touch-action: none; cursor: crosshair; background: rgba(89, 37, 220, .06); }
+.hotspot-draw-guide { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); padding: 5px 9px; border-radius: 12px; color: #fff; background: rgba(52, 34, 98, .86); font-size: 9px; white-space: nowrap; pointer-events: none; }
+.hotspot-draft { position: absolute; border: 2px solid #7f56d9; border-radius: 6px; background: rgba(127, 86, 217, .2); box-shadow: 0 0 0 999px rgba(255,255,255,.12); pointer-events: none; }
 
 .builder-inspector label { color: #344054; font-size: 13px; font-weight: 600; }
 .number-field { display: flex; align-items: stretch; margin-top: 8px; }
