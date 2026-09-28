@@ -16,7 +16,7 @@ import './ResEditor.css'
 type ModuleType = 'search' | 'banner' | 'quickNav' | 'content' | 'custom' | 'notice' | 'activity' | 'course'
 type JumpType = 'internal' | 'external' | 'miniProgram'
 type SubscriptionConfig = { enabled: boolean; templateName?: string; templateId?: string; popupLimit: number }
-type JumpTarget = { jumpType: JumpType; pageTitle?: string; url?: string; pagePath?: string; appId?: string; miniPath?: string; subscription?: SubscriptionConfig }
+type JumpTarget = { jumpType: JumpType; url?: string; pagePath?: string; appId?: string; miniPath?: string; subscription?: SubscriptionConfig }
 type BannerItem = JumpTarget & { id: number; image: string; name: string }
 type ContentItem = JumpTarget & { id: number; title: string; subtitle: string; icon: string; enabled: boolean }
 type HomeModule = {
@@ -54,14 +54,14 @@ const TAB_DEFAULTS: NavItem[] = [
   { id: 4, name: '我的', path: '/pages/mine/index', icon: '', activeIcon: '', enabled: true },
 ]
 const DEFAULT_BANNERS: BannerItem[] = [
-  { id: 1, name: '首页主视觉', image: '', jumpType: 'internal', pageTitle: '活动中心', pagePath: '/pages/activity/index' },
-  { id: 2, name: '卖家成长专区', image: '', jumpType: 'internal', pageTitle: '成长中心', pagePath: '/pages/growth/index' },
+  { id: 1, name: '首页主视觉', image: '', jumpType: 'internal', pagePath: '/pages/activity/index' },
+  { id: 2, name: '卖家成长专区', image: '', jumpType: 'internal', pagePath: '/pages/growth/index' },
 ]
 const DEFAULT_CONTENT: ContentItem[] = [
-  { id: 1, title: '品类洞察', subtitle: '趋势与选品', icon: '', enabled: true, jumpType: 'internal', pageTitle: '品类洞察', pagePath: '/pages/content/category' },
-  { id: 2, title: '卖家案例', subtitle: '成功经验', icon: '', enabled: true, jumpType: 'internal', pageTitle: '卖家案例', pagePath: '/pages/content/case' },
-  { id: 3, title: '物流方案', subtitle: 'WFS/头程', icon: '', enabled: true, jumpType: 'internal', pageTitle: '物流方案', pagePath: '/pages/content/logistics' },
-  { id: 4, title: '运营干货', subtitle: '实战技巧', icon: '', enabled: true, jumpType: 'internal', pageTitle: '运营干货', pagePath: '/pages/content/operation' },
+  { id: 1, title: '品类洞察', subtitle: '趋势与选品', icon: '', enabled: true, jumpType: 'internal', pagePath: '/pages/content/category' },
+  { id: 2, title: '卖家案例', subtitle: '成功经验', icon: '', enabled: true, jumpType: 'internal', pagePath: '/pages/content/case' },
+  { id: 3, title: '物流方案', subtitle: 'WFS/头程', icon: '', enabled: true, jumpType: 'internal', pagePath: '/pages/content/logistics' },
+  { id: 4, title: '运营干货', subtitle: '实战技巧', icon: '', enabled: true, jumpType: 'internal', pagePath: '/pages/content/operation' },
 ]
 const cloneBanners = () => DEFAULT_BANNERS.map((item) => ({ ...item }))
 const cloneContent = () => DEFAULT_CONTENT.map((item) => ({ ...item }))
@@ -121,7 +121,6 @@ function JumpTargetFields({ target, onChange }: { target: JumpTarget; onChange: 
       { value: 'miniProgram', label: '外部小程序' },
     ]} /></div>
     {target.jumpType === 'internal' && <>
-      <div><label>小程序页面标题</label><Input value={target.pageTitle} placeholder="例如：活动中心" maxLength={20} showCount onChange={(event) => onChange({ pageTitle: event.target.value })} /></div>
       <div><label>小程序页面路径</label><Input value={target.pagePath} placeholder="例如：/pages/activity/index" onChange={(event) => onChange({ pagePath: event.target.value })} /></div>
     </>}
     {target.jumpType === 'external' && <div><label>外部链接</label><Input value={target.url} placeholder="https://" onChange={(event) => onChange({ url: event.target.value })} /></div>}
@@ -236,7 +235,7 @@ export default function ResEditor() {
       text: type === 'search' ? '搜索课程、活动、政策' : type === 'notice' ? '请输入公告内容' : '',
       ...(type === 'banner' ? { banners: cloneBanners(), interval: 3 } : {}),
       ...(type === 'content' ? { contentItems: cloneContent(), layout: 'grid' as const, background: '#f5f6f8' } : {}),
-      ...(type === 'custom' ? { title: '自定义模块标题', text: '添加模块说明文案', buttonText: '查看详情', jump: { jumpType: 'internal' as const, pageTitle: '小程序首页', pagePath: '/pages/index/index' } } : {}),
+      ...(type === 'custom' ? { title: '自定义模块标题', text: '添加模块说明文案', buttonText: '查看详情', jump: { jumpType: 'internal' as const, pagePath: '/pages/index/index' } } : {}),
     }
     setModules((items) => { const next = [...items]; next.splice(at, 0, item); return next })
     setSelected(`module:${item.id}`); touch()
@@ -387,7 +386,7 @@ export default function ResEditor() {
             <div className="inspector-field"><label>轮播间隔</label><Space.Compact block><InputNumber min={1} max={30} value={selectedModule.interval || 3} onChange={(interval) => updateModule({ interval: interval || 3 })} style={{ width: '100%' }} /><Button disabled>秒</Button></Space.Compact></div>
             <div className="inspector-tip"><PictureOutlined /><span>每张图片可分别跳转到外部链接、小程序内部页面或外部小程序，最多添加 10 张。</span></div>
             <Collapse size="small" accordion defaultActiveKey={[selectedModule.banners?.[0]?.id || 1]} items={bannerItems} className="config-collapse" />
-            {(selectedModule.banners?.length || 0) < 10 && <Button block icon={<PlusOutlined />} onClick={() => { const id = Math.max(0, ...(selectedModule.banners || []).map((item) => item.id)) + 1; updateModule({ banners: [...(selectedModule.banners || []), { id, name: `轮播图 ${id}`, image: '', jumpType: 'internal', pageTitle: '小程序首页', pagePath: '/pages/index/index' }] }) }}>添加轮播图</Button>}
+            {(selectedModule.banners?.length || 0) < 10 && <Button block icon={<PlusOutlined />} onClick={() => { const id = Math.max(0, ...(selectedModule.banners || []).map((item) => item.id)) + 1; updateModule({ banners: [...(selectedModule.banners || []), { id, name: `轮播图 ${id}`, image: '', jumpType: 'internal', pagePath: '/pages/index/index' }] }) }}>添加轮播图</Button>}
           </>}
           {selectedModule.type === 'quickNav' && <><Divider>八大金刚入口</Divider><div className="inspector-tip"><AppstoreOutlined /><span>系统预置 8 个入口，可逐个修改名称、跳转页面与图标。</span></div><Collapse size="small" accordion items={quickItems} className="config-collapse" /></>}
           {selectedModule.type === 'content' && <>
@@ -396,15 +395,15 @@ export default function ResEditor() {
             <Divider>内容卡片</Divider>
             <div className="inspector-tip"><ReadOutlined /><span>配置内容标题、说明、图标和跳转目标，可按需控制单项展示。</span></div>
             <Collapse size="small" accordion items={contentItems} className="config-collapse" />
-            {(selectedModule.contentItems?.length || 0) < 8 && <Button block icon={<PlusOutlined />} onClick={() => { const id = Math.max(0, ...(selectedModule.contentItems || []).map((item) => item.id)) + 1; updateModule({ contentItems: [...(selectedModule.contentItems || []), { id, title: '新内容', subtitle: '内容说明', icon: '', enabled: true, jumpType: 'internal', pageTitle: '小程序首页', pagePath: '/pages/index/index' }] }) }}>添加内容卡片</Button>}
+            {(selectedModule.contentItems?.length || 0) < 8 && <Button block icon={<PlusOutlined />} onClick={() => { const id = Math.max(0, ...(selectedModule.contentItems || []).map((item) => item.id)) + 1; updateModule({ contentItems: [...(selectedModule.contentItems || []), { id, title: '新内容', subtitle: '内容说明', icon: '', enabled: true, jumpType: 'internal', pagePath: '/pages/index/index' }] }) }}>添加内容卡片</Button>}
           </>}
           {selectedModule.type === 'custom' && <>
             <div className="inspector-field"><label>模块标题</label><Input value={selectedModule.title} maxLength={18} showCount onChange={(event) => updateModule({ title: event.target.value })} /></div>
             <div className="inspector-field"><label>说明文案</label><Input.TextArea value={selectedModule.text} maxLength={40} showCount autoSize={{ minRows: 2, maxRows: 4 }} onChange={(event) => updateModule({ text: event.target.value })} /></div>
             <div className="inspector-field"><label>按钮文案</label><Input value={selectedModule.buttonText} maxLength={8} showCount onChange={(event) => updateModule({ buttonText: event.target.value })} /></div>
             <div className="inspector-field"><label>模块图片</label><ImageUpload value={selectedModule.image} label="自定义模块图片" maxMB={5} onChange={(image) => updateModule({ image })} /></div>
-            <Divider>点击跳转</Divider><JumpTargetFields target={selectedModule.jump || { jumpType: 'internal', pageTitle: '小程序首页', pagePath: '/pages/index/index' }} onChange={(patch) => updateModule({ jump: { ...(selectedModule.jump || { jumpType: 'internal', pageTitle: '小程序首页' }), ...patch } })} />
-            <SubscriptionFields value={selectedModule.jump?.subscription} triggerLabel="点击模块按钮时" onChange={(subscription) => updateModule({ jump: { ...(selectedModule.jump || { jumpType: 'internal', pageTitle: '小程序首页' }), subscription } })} />
+            <Divider>点击跳转</Divider><JumpTargetFields target={selectedModule.jump || { jumpType: 'internal', pagePath: '/pages/index/index' }} onChange={(patch) => updateModule({ jump: { ...(selectedModule.jump || { jumpType: 'internal' }), ...patch } })} />
+            <SubscriptionFields value={selectedModule.jump?.subscription} triggerLabel="点击模块按钮时" onChange={(subscription) => updateModule({ jump: { ...(selectedModule.jump || { jumpType: 'internal', pagePath: '/pages/index/index' }), subscription } })} />
           </>}
         </> : selected === 'tabbar' ? <>
           <div className="panel-heading"><div><b>底部菜单设置</b><span>固定显示在小程序页面底部</span></div>
