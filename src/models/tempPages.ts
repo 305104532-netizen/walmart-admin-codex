@@ -1,3 +1,6 @@
+import { DEFAULT_REGISTER_GUIDE, REGISTER_GUIDE_PATH } from './registerGuide'
+import type { RegisterGuideConfig } from './registerGuide'
+
 export type TempPageStatus = 'online' | 'scheduled' | 'expired' | 'draft'
 export type TempPageKind = 'system' | 'temporary'
 
@@ -22,6 +25,7 @@ export interface MiniProgramPage {
   shareCover: string
   updatedAt: string
   componentCount: number
+  registerGuide?: RegisterGuideConfig
 }
 
 export const DEFAULT_MINI_PROGRAM_PAGES: MiniProgramPage[] = [
@@ -41,9 +45,10 @@ export const DEFAULT_MINI_PROGRAM_PAGES: MiniProgramPage[] = [
     shareTitle: '沃尔玛卖家活动中心', shareCover: '', updatedAt: '2026-09-07 15:46', componentCount: 5,
   },
   {
-    id: 'page-register', title: '沃要开店', path: '/pages/register/index', kind: 'system', pv: 58960, uv: 17640,
+    id: 'page-register', title: '沃要开店', path: REGISTER_GUIDE_PATH, kind: 'system', pv: 58960, uv: 17640,
     channels: [{ key: 'source', value: 'home_entry', note: '首页入口' }, { key: 'bd', value: '{bd_code}', note: 'BD经理动态参数' }], status: 'online',
-    shareTitle: '加入沃尔玛全球电商', shareCover: '', updatedAt: '2026-09-06 12:08', componentCount: 4,
+    shareTitle: '加入沃尔玛全球电商', shareCover: '', updatedAt: '2026-09-06 12:08', componentCount: 5,
+    registerGuide: DEFAULT_REGISTER_GUIDE,
   },
   {
     id: 'page-course', title: '卖家大学', path: '/pages/course/index', kind: 'system', pv: 46780, uv: 13920,

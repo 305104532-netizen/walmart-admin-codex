@@ -1,6 +1,7 @@
 import { Fragment, useMemo, useRef, useState } from 'react'
 import type { DragEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import dayjs from 'dayjs'
+import type { Dayjs } from 'dayjs'
 import {
   Alert, Button, Card, Col, DatePicker, Descriptions, Divider, Drawer, Empty, Form, Image, Input,
   InputNumber, Modal, Popconfirm, QRCode, Row, Segmented, Select, Space, Statistic, Table, Tabs,
@@ -15,6 +16,9 @@ import {
 import ImageUpload from '../../components/ImageUpload'
 import { DEFAULT_MINI_PROGRAM_PAGES } from '../../models/tempPages'
 import type { ChannelParam, MiniProgramPage, TempPageStatus } from '../../models/tempPages'
+import { DEFAULT_REGISTER_GUIDE, readRegisterGuidePage, saveRegisterGuidePage } from '../../models/registerGuide'
+import type { GuideFaq, GuideFlow, GuideItem, GuidePolicy, GuideSchedule, GuideSection, GuideSite, PromoStat, RegisterGuideConfig } from '../../models/registerGuide'
+import RegisterGuideFields from './RegisterGuideFields'
 import './ResPages.css'
 
 type BlockType = 'image' | 'video' | 'banner' | 'text' | 'hotspot' | 'subscribe'
@@ -87,6 +91,35 @@ function formatNumber(value: number) {
   return new Intl.NumberFormat('zh-CN').format(value)
 }
 
+function guideToForm(config: RegisterGuideConfig) {
+  const period = (item: GuideSchedule): [Dayjs, Dayjs] | undefined => item.validFrom && item.validTo ? [dayjs(item.validFrom), dayjs(item.validTo)] : undefined
+  const section = <T extends GuideItem>(value: GuideSection<T>) => ({
+    ...value, period: period(value), items: value.items.map((item) => ({ ...item, period: period(item) })),
+  })
+  return {
+    promo: { ...section(config.promo), title: config.promo.title, subtitle: config.promo.subtitle, tags: config.promo.tags },
+    sites: section(config.sites),
+    flows: { ...section(config.flows), materials: config.flows.materials },
+    faqs: section(config.faqs), policies: section(config.policies),
+  }
+}
+
+function guideFromForm(value: ReturnType<typeof guideToForm>): RegisterGuideConfig {
+  const dates = <T extends { period?: [Dayjs, Dayjs] }>(item: T) => {
+    const { period, ...rest } = item
+    return { ...rest, validFrom: period?.[0]?.format('YYYY-MM-DD'), validTo: period?.[1]?.format('YYYY-MM-DD') }
+  }
+  const section = <T extends GuideItem>(item: { enabled: boolean; period?: [Dayjs, Dayjs]; items: Array<T & { period?: [Dayjs, Dayjs] }> }) => ({
+    ...dates(item), items: item.items.map(dates),
+  })
+  return {
+    promo: { ...section<PromoStat>(value.promo), title: value.promo.title, subtitle: value.promo.subtitle, tags: value.promo.tags },
+    sites: section<GuideSite>(value.sites),
+    flows: { ...section<GuideFlow>(value.flows), materials: value.flows.materials },
+    faqs: section<GuideFaq>(value.faqs), policies: section<GuidePolicy>(value.policies),
+  }
+}
+
 function readImage(file: File, done: (value: string) => void, fail: (text: string) => void) {
   if (!file.type.startsWith('image/')) {
     fail('请选择图片文件')
@@ -120,11 +153,13 @@ function PhoneBlock({ block }: { block: PageBlock }) {
 }
 
 export default function ResPages() {
-  const [pages, setPages] = useState<MiniProgramPage[]>(DEFAULT_MINI_PROGRAM_PAGES)
+  const [pages, setPages] = useState<MiniProgramPage[]>(() => DEFAULT_MINI_PROGRAM_PAGES.map((page) => page.id === 'page-register' ? readRegisterGuidePage(page) : page))
   const [keyword, setKeyword] = useState('')
   const [kind, setKind] = useState<string>('all')
   const [status, setStatus] = useState<string>('all')
   const [editing, setEditing] = useState<MiniProgramPage>()
+  const [editTab, setEditTab] = useState('basic')
+  const [guideTab, setGuideTab] = useState<keyof RegisterGuideConfig>('promo')
   const [sunPage, setSunPage] = useState<MiniProgramPage>()
   const [sunChannel, setSunChannel] = useState('all')
   const [builderOpen, setBuilderOpen] = useState(false)
@@ -137,7 +172,7 @@ export default function ResPages() {
   const [dropIndex, setDropIndex] = useState<number>()
   const [drawingSubscription, setDrawingSubscription] = useState(false)
   const [hotspotDraft, setHotspotDraft] = useState<HotspotDraft>()
-  const drawStart = useRef<{ x: number; y: number }>()
+  const drawStart = useRef<{ x: number; y: number } | undefined>(undefined)
   const [builderTab, setBuilderTab] = useState('page')
   const [editForm] = Form.useForm()
   const [builderForm] = Form.useForm()
@@ -172,6 +207,8 @@ export default function ResPages() {
   }
 
   const openEdit = (page: MiniProgramPage) => {
+    setEditTab('basic')
+    setGuideTab('promo')
     setEditing(page)
     editForm.setFieldsValue({
       title: page.title,
@@ -182,12 +219,25 @@ export default function ResPages() {
       channels: page.channels,
       shareTitle: page.shareTitle,
       shareCover: page.shareCover,
+      registerGuide: page.id === 'page-register' ? guideToForm(page.registerGuide ?? DEFAULT_REGISTER_GUIDE) : undefined,
     })
   }
 
   const saveEdit = async () => {
     if (!editing) return
-    const values = await editForm.validateFields()
+    try { await editForm.validateFields() }
+    catch {
+      const name = editForm.getFieldsError().find((field) => field.errors.length > 0)?.name
+      if (name?.[0] === 'registerGuide') {
+        setEditTab('guide')
+        setGuideTab(String(name[1]) as keyof RegisterGuideConfig)
+      } else if (name?.[0] === 'channels') setEditTab('channel')
+      else if (name?.[0] === 'shareTitle' || name?.[0] === 'shareCover') setEditTab('share')
+      else setEditTab('basic')
+      messageApi.warning('请完善必填内容后保存')
+      return
+    }
+    const values = editForm.getFieldsValue(true)
     const next: MiniProgramPage = {
       ...editing,
       title: values.title,
@@ -197,7 +247,12 @@ export default function ResPages() {
       validTo: values.validityMode === 'range' ? values.period?.[1]?.format('YYYY-MM-DD') : undefined,
       shareTitle: values.shareTitle,
       shareCover: values.shareCover ?? '',
+      ...(editing.id === 'page-register' ? { registerGuide: guideFromForm(values.registerGuide) } : {}),
       updatedAt: dayjs().format('YYYY-MM-DD HH:mm'),
+    }
+    if (editing.id === 'page-register') {
+      try { saveRegisterGuidePage(next) }
+      catch { messageApi.error('入驻指引保存失败，请检查浏览器存储空间'); return }
     }
     setPages((current) => current.map((page) => page.id === next.id ? next : page))
     setEditing(undefined)
@@ -456,25 +511,26 @@ export default function ResPages() {
       <Table rowKey="id" columns={columns} dataSource={filteredPages} scroll={{ x: 1390 }} pagination={{ pageSize: 10, showTotal: (total) => '共 ' + total + ' 个页面' }} />
     </Card>
 
-    <Drawer open={!!editing} onClose={() => setEditing(undefined)} title={editing ? '编辑页面 · ' + editing.title : '编辑页面'} size="min(720px, 94vw)"
+    <Drawer open={!!editing} onClose={() => setEditing(undefined)} title={editing ? '编辑页面 · ' + editing.title : '编辑页面'} size={editing?.id === 'page-register' ? 'min(920px, 96vw)' : 'min(720px, 94vw)'}
       extra={<Space><Button onClick={() => setEditing(undefined)}>取消</Button><Button type="primary" onClick={() => void saveEdit()}>保存配置</Button></Space>}>
       <Alert type="info" showIcon title="修改后会同步影响该页面的新分享链接和太阳码，请确认渠道参数与分享素材无误。" style={{ marginBottom: 16 }} />
       <Form form={editForm} layout="vertical">
-        <Tabs items={[
-          { key: 'basic', label: '页面设置', children: <>
+        <Tabs activeKey={editTab} onChange={setEditTab} items={[
+          { key: 'basic', label: '页面设置', forceRender: true, children: <>
             <Form.Item label="小程序页面标题" name="title" rules={[{ required: true, message: '请输入页面标题' }]}><Input maxLength={30} showCount /></Form.Item>
             <Form.Item label="页面路径" name="path"><Input disabled prefix={<LinkOutlined />} /></Form.Item>
             <Row gutter={16}><Col span={12}><Form.Item label="页面状态" name="status"><Select options={Object.entries(STATUS_META).map(([value, item]) => ({ value, label: item.label }))} /></Form.Item></Col><Col span={12}><Form.Item label="有效期" name="validityMode"><Segmented block options={[{ label: '长期有效', value: 'long' }, { label: '指定日期', value: 'range' }]} /></Form.Item></Col></Row>
             {editValidityMode === 'range' && <Form.Item label="生效时间" name="period" rules={[{ required: true, message: '请选择有效期' }]}><DatePicker.RangePicker style={{ width: '100%' }} /></Form.Item>}
           </> },
-          { key: 'channel', label: '渠道参数', children: <>
+          { key: 'channel', label: '渠道参数', forceRender: true, children: <>
             <Alert type="warning" showIcon title="渠道参数会追加在页面路径后，用于区分广告、BD经理或活动来源。支持 {channel}、{bd_code} 等动态参数。" style={{ marginBottom: 16 }} />
             <Form.List name="channels">{(fields, { add, remove }) => <Space orientation="vertical" size={12} style={{ width: '100%' }}>
               {fields.map(({ key, name, ...rest }) => <Card key={key} size="small"><Row gutter={8} align="middle"><Col span={7}><Form.Item {...rest} name={[name, 'key']} label="参数名" rules={[{ required: true }]}><Input placeholder="source" /></Form.Item></Col><Col span={7}><Form.Item {...rest} name={[name, 'value']} label="参数值" rules={[{ required: true }]}><Input placeholder="wechat" /></Form.Item></Col><Col span={8}><Form.Item {...rest} name={[name, 'note']} label="渠道说明"><Input placeholder="公众号推文" /></Form.Item></Col><Col span={2}><Button danger type="text" icon={<DeleteOutlined />} aria-label="删除渠道参数" onClick={() => remove(name)} /></Col></Row></Card>)}
               <Button block type="dashed" icon={<PlusOutlined />} onClick={() => add({ key: '', value: '', note: '' })}>添加渠道参数</Button>
             </Space>}</Form.List>
           </> },
-          { key: 'share', label: '分享卡片', children: <Row gutter={[20, 20]}><Col xs={24} md={14}><Form.Item label="分享小程序卡片标题" name="shareTitle" rules={[{ required: true, message: '请输入分享标题' }]}><Input.TextArea rows={3} maxLength={45} showCount /></Form.Item><Form.Item label="卡片封面图" name="shareCover"><ImageUpload label="分享卡片封面" maxMB={5} /></Form.Item></Col><Col xs={24} md={10}><ShareCard title={editShareTitle || editing?.title || ''} cover={editShareCover} /></Col></Row> },
+          { key: 'share', label: '分享卡片', forceRender: true, children: <Row gutter={[20, 20]}><Col xs={24} md={14}><Form.Item label="分享小程序卡片标题" name="shareTitle" rules={[{ required: true, message: '请输入分享标题' }]}><Input.TextArea rows={3} maxLength={45} showCount /></Form.Item><Form.Item label="卡片封面图" name="shareCover"><ImageUpload label="分享卡片封面" maxMB={5} /></Form.Item></Col><Col xs={24} md={10}><ShareCard title={editShareTitle || editing?.title || ''} cover={editShareCover} /></Col></Row> },
+          ...(editing?.id === 'page-register' ? [{ key: 'guide', label: '入驻指引', children: <RegisterGuideFields activeKey={guideTab} onChange={setGuideTab} />, forceRender: true }] : []),
         ]} />
       </Form>
     </Drawer>

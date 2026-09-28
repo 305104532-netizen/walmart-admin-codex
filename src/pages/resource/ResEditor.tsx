@@ -11,6 +11,7 @@ import {
   Switch, Tag, Tooltip, Typography, Upload, message,
 } from 'antd'
 import ImageUpload from '../../components/ImageUpload'
+import { REGISTER_GUIDE_PATH } from '../../models/registerGuide'
 import './ResEditor.css'
 
 type ModuleType = 'search' | 'banner' | 'quickNav' | 'content' | 'custom' | 'notice' | 'activity' | 'course'
@@ -42,7 +43,7 @@ const MODULE_LIBRARY: ModuleDefinition[] = [
   { type: 'course', name: '成长课程', description: '卖家学习内容推荐', icon: <ReadOutlined />, defaultHeight: 196 },
 ]
 const QUICK_NAV_DEFAULTS: NavItem[] = [
-  ['沃要开店', '/pages/register/index'], ['活动中心', '/pages/activity/index'],
+  ['沃要开店', REGISTER_GUIDE_PATH], ['活动中心', '/pages/activity/index'],
   ['成长中心', '/pages/growth/index'], ['卖家大学', '/pages/course/index'],
   ['佣金计算', '/pages/tools/commission'], ['政策中心', '/pages/policy/index'],
   ['招商经理', '/pages/bd/index'], ['更多服务', '/pages/service/index'],

@@ -43,6 +43,36 @@
 .traffic-cell { display: flex; flex-direction: column; gap: 3px; color: #667085; font-size: 12px; }
 .traffic-cell b { display: inline-block; min-width: 66px; color: #172033; font-size: 14px; }
 
+.guide-config { min-height: 520px; }
+.guide-section-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 8px 0 16px; border-bottom: 1px solid var(--page-border); }
+.guide-section-head > div:first-child { display: flex; align-items: center; gap: 8px; }
+.guide-section-head h5 { margin: 0 !important; }
+.guide-section-head .ant-form-item, .guide-entry-schedule .ant-form-item { margin-bottom: 0; }
+.guide-section-head .ant-form-item-row, .guide-entry-schedule .ant-form-item-row { display: flex; align-items: center; gap: 8px; }
+.guide-section-head .ant-form-item-label, .guide-entry-schedule .ant-form-item-label { padding: 0; }
+.guide-section-body { padding-top: 20px; }
+.guide-section-body > .ant-typography { display: block; margin: 18px 0 10px; }
+.guide-list { display: grid; gap: 12px; margin-bottom: 18px; }
+.guide-entry { padding: 14px 16px 4px; border: 1px solid var(--page-border); border-radius: 6px; background: #fff; }
+.guide-entry-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; }
+.guide-entry-schedule { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin-bottom: 14px; }
+.guide-field-grid { display: grid; gap: 12px; }
+.guide-field-grid.three { grid-template-columns: 1fr 1fr 150px; }
+.guide-field-grid.two { grid-template-columns: 1fr 1fr; }
+.guide-field-grid.site { grid-template-columns: 90px 2fr 1.3fr 100px; }
+.guide-text-list { display: grid; gap: 8px; margin: 8px 0 18px; }
+.guide-text-row { display: flex; align-items: flex-start; gap: 8px; }
+.guide-text-row > .ant-form-item { flex: 1; min-width: 0; margin-bottom: 0; }
+.guide-text-row .ant-space { flex: none; }
+
+@media (max-width: 700px) {
+  .guide-section-head > .ant-space { width: 100%; }
+  .guide-section-head .ant-picker, .guide-entry-schedule .ant-picker { max-width: 100%; }
+  .guide-field-grid.three, .guide-field-grid.two, .guide-field-grid.site { grid-template-columns: 1fr; gap: 0; }
+  .guide-entry { padding-inline: 12px; }
+  .guide-text-row { flex-wrap: wrap; }
+}
+
 .sun-code-panel {
   padding: 24px;
   background: linear-gradient(145deg, #f5f9ff, #fff);
