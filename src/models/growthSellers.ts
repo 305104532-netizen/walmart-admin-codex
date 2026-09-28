@@ -98,7 +98,7 @@ const ACTIVITIES = ['2026沃尔玛卖家峰会', '新手入门直播课', 'Q3选
 const BEHAVIOR_PAGES = [
   { pageName: '卖家大学', pagePath: '/pages/course/index' },
   { pageName: '成长中心', pagePath: '/pages/growth/index' },
-  { pageName: '沃要开店', pagePath: '/pages/register/index' },
+  { pageName: '沃要开店', pagePath: '/pages/register-guide/index' },
   { pageName: '活动中心', pagePath: '/pages/activity/index' },
   { pageName: '卖家大学', pagePath: '/pages/course/index' },
 ] as const
