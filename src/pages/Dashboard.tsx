@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Row, Col, Card, Statistic, List, Badge, Button, Segmented, Space } from 'antd'
+import { Row, Col, Card, Statistic, List, Badge, Button, Segmented, Space, Typography } from 'antd'
 import { ArrowUpOutlined, ArrowDownOutlined, ReloadOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import EChart from '../components/EChart'
 import { lastNDates } from '../mock/util'
+import './Dashboard.css'
 
 const stats = [
   { title: '总卖家数', value: 12456, change: 3.2, up: true, to: '/register/list' },
@@ -12,12 +13,15 @@ const stats = [
   { title: '入驻转化率', value: 18.2, suffix: '%', change: 5.4, up: true, to: '/register/trace' },
 ]
 
+const statColors = ['#0071CE', '#25864A', '#B86E00', '#0071CE']
+
 export default function Dashboard() {
   const navigate = useNavigate()
   const [period, setPeriod] = useState<number>(7)
+  const [refreshKey, setRefreshKey] = useState(0)
   const dates = lastNDates(period)
-  const pv = dates.map(() => 1000 + Math.floor(Math.random() * 800))
-  const uv = dates.map(() => 400 + Math.floor(Math.random() * 300))
+  const pv = dates.map((_, index) => 1000 + ((refreshKey * 137 + index * 173) % 800))
+  const uv = dates.map((_, index) => 400 + ((refreshKey * 83 + index * 97) % 300))
 
   const trendOption = {
     tooltip: { trigger: 'axis' },
@@ -51,21 +55,25 @@ export default function Dashboard() {
   ]
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
-        <Button icon={<ReloadOutlined />} onClick={() => setPeriod((p) => p)}>刷新</Button>
+    <div className="dashboard-page">
+      <div className="dashboard-heading">
+        <div>
+          <Typography.Title level={2}>运营概览</Typography.Title>
+          <Typography.Text type="secondary">实时掌握商家入驻、活跃与内容运营情况</Typography.Text>
+        </div>
+        <Button icon={<ReloadOutlined />} onClick={() => setRefreshKey((key) => key + 1)}>刷新数据</Button>
       </div>
-      <Row gutter={16}>
-        {stats.map((s) => (
-          <Col span={6} key={s.title}>
-            <Card hoverable onClick={() => navigate(s.to)} styles={{ body: { padding: 20 } }}>
+      <Row gutter={[16, 16]} className="dashboard-stat-grid">
+        {stats.map((s, index) => (
+          <Col xs={24} sm={12} xl={6} key={s.title}>
+            <Card className="dashboard-stat-card" hoverable onClick={() => navigate(s.to)} styles={{ body: { padding: 20 } }}>
+              <div className="dashboard-stat-label">{s.title}</div>
               <Statistic
-                title={s.title}
                 value={s.value}
                 suffix={s.suffix}
-                valueStyle={{ color: '#111827', fontWeight: 700 }}
+                valueStyle={{ color: statColors[index], fontWeight: 750 }}
               />
-              <div style={{ marginTop: 8, color: s.up ? '#10B981' : '#EF4444', fontSize: 13 }}>
+              <div className={`dashboard-stat-change ${s.up ? 'is-up' : 'is-down'}`}>
                 {s.up ? <ArrowUpOutlined /> : <ArrowDownOutlined />} {s.change}% 较上期
               </div>
             </Card>
@@ -73,27 +81,28 @@ export default function Dashboard() {
         ))}
       </Row>
 
-      <Row gutter={16} style={{ marginTop: 16 }}>
-        <Col span={16}>
+      <Row gutter={[16, 16]} className="dashboard-chart-grid">
+        <Col xs={24} xl={16}>
           <Card
-            title="PV / UV 趋势"
+            className="dashboard-panel-card"
+            title={<span className="dashboard-card-title">PV / UV 趋势</span>}
             extra={<Segmented options={[{ label: '7天', value: 7 }, { label: '30天', value: 30 }]} value={period} onChange={(v) => setPeriod(v as number)} />}
           >
             <EChart option={trendOption} />
           </Card>
         </Col>
-        <Col span={8}>
-          <Card title="卖家状态分布">
+        <Col xs={24} xl={8}>
+          <Card className="dashboard-panel-card" title={<span className="dashboard-card-title">卖家状态分布</span>}>
             <EChart option={pieOption} />
           </Card>
         </Col>
       </Row>
 
-      <Card title="待办事项" style={{ marginTop: 16 }}>
+      <Card className="dashboard-panel-card dashboard-todo-card" title={<span className="dashboard-card-title">待办事项</span>}>
         <List
           dataSource={todos}
           renderItem={(item) => (
-            <List.Item actions={[<Button type="link" onClick={() => navigate(item.to)}>去处理 →</Button>]}>
+            <List.Item actions={[<Button key={item.to} type="link" onClick={() => navigate(item.to)}>去处理</Button>]}> 
               <Space><Badge color={item.color} />{item.text}</Space>
             </List.Item>
           )}

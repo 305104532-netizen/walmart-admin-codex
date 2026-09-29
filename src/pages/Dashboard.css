@@ -1,0 +1,54 @@
+.dashboard-page { min-width: 0; }
+
+.dashboard-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.dashboard-heading .ant-typography { margin: 0; }
+.dashboard-heading h2.ant-typography { color: var(--admin-text); font-size: 24px; line-height: 1.25; }
+.dashboard-heading .ant-typography + .ant-typography { display: block; margin-top: 6px; }
+.dashboard-heading .ant-btn { flex: 0 0 auto; }
+
+.dashboard-stat-grid, .dashboard-chart-grid { min-width: 0; }
+.dashboard-stat-card { height: 100%; cursor: pointer; }
+.dashboard-stat-card .ant-card-body { position: relative; overflow: hidden; }
+.dashboard-stat-card .ant-card-body::after {
+  position: absolute;
+  right: -20px;
+  bottom: -24px;
+  width: 92px;
+  height: 92px;
+  content: '';
+  border: 18px solid rgba(0, 113, 206, .06);
+  border-radius: 50%;
+}
+.dashboard-stat-label { margin-bottom: 4px; color: var(--admin-text-secondary); font-size: 13px; font-weight: 600; }
+.dashboard-stat-card .ant-statistic-content { font-size: 30px; line-height: 1.2; }
+.dashboard-stat-change { position: relative; z-index: 1; margin-top: 9px; font-size: 12px; font-weight: 600; }
+.dashboard-stat-change.is-up { color: var(--admin-success, #25864a); }
+.dashboard-stat-change.is-down { color: var(--admin-error, #c9362b); }
+
+.dashboard-chart-grid { margin-top: 16px; }
+.dashboard-panel-card { height: 100%; }
+.dashboard-panel-card .ant-card-head { min-height: 56px; }
+.dashboard-card-title { font-weight: 700; }
+.dashboard-panel-card .echarts-for-react { min-height: 280px; }
+.dashboard-todo-card { margin-top: 16px; }
+.dashboard-todo-card .ant-list-item { padding-block: 14px; }
+.dashboard-todo-card .ant-btn-link { padding-inline: 8px; font-weight: 600; }
+
+@media (max-width: 767px) {
+  .dashboard-heading { align-items: flex-start; flex-direction: column; gap: 12px; }
+  .dashboard-heading .ant-btn { width: 100%; }
+  .dashboard-heading h2.ant-typography { font-size: 22px; }
+  .dashboard-panel-card .ant-card-head { align-items: flex-start; }
+  .dashboard-panel-card .ant-card-extra { width: 100%; }
+  .dashboard-panel-card .ant-card-extra .ant-segmented { width: 100%; }
+  .dashboard-panel-card .ant-card-extra .ant-segmented-group { width: 100%; }
+  .dashboard-panel-card .ant-card-extra .ant-segmented-item { flex: 1; text-align: center; }
+  .dashboard-panel-card .echarts-for-react { min-height: 240px; }
+}
