@@ -73,14 +73,14 @@
   box-shadow: 0 1px 4px rgba(16, 30, 54, .03);
 }
 
-.admin-header-context { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.admin-header-context { display: flex; align-items: center; gap: 12px; min-width: 0; line-height: normal; }
 .admin-menu-trigger { width: 36px; height: 36px; font-size: 18px; color: var(--admin-text-secondary); }
 .admin-menu-trigger:hover { color: var(--admin-primary) !important; background: var(--admin-primary-light) !important; }
-.admin-workspace-context { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.admin-workspace-context { display: flex; align-items: center; gap: 9px; min-width: 0; line-height: 1.2; }
 .admin-workspace-icon { display: inline-flex; color: var(--admin-primary); font-size: 18px; }
-.admin-workspace-context > span:last-child { display: grid; gap: 1px; min-width: 0; }
-.admin-workspace-context strong { color: var(--admin-text); font-size: 14px; font-weight: 700; }
-.admin-workspace-context small { color: var(--admin-text-secondary); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.admin-workspace-context > span:last-child { display: grid; gap: 2px; min-width: 0; line-height: 1.2; }
+.admin-workspace-context strong { color: var(--admin-text); font-size: 14px; font-weight: 700; line-height: 1.2; }
+.admin-workspace-context small { color: var(--admin-text-secondary); font-size: 11px; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .admin-account-actions { flex-shrink: 0; }
 .admin-user-menu { max-width: 240px; cursor: pointer; }
 .admin-user-name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
