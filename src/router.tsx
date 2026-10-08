@@ -3,11 +3,9 @@ import MainLayout from './layouts/MainLayout'
 import Placeholder from './pages/Placeholder'
 import Dashboard from './pages/Dashboard'
 
-// 入驻管理
-import RegisterList from './pages/register/RegisterList'
+// 传统入驻页面：可通过成长中心中的运营功能访问
 import RegisterTrace from './pages/register/RegisterTrace'
 import FormConfig from './pages/register/FormConfig'
-import Prescreen from './pages/register/Prescreen'
 import RegisterRemind from './pages/register/RegisterRemind'
 import RegisterTask from './pages/register/RegisterTask'
 // 成长中心
@@ -67,11 +65,9 @@ export const router = createBrowserRouter([
       { index: true, element: <Navigate to="/dashboard" replace /> },
       { path: 'dashboard', element: <Dashboard /> },
 
-      { path: 'register/list', element: <RegisterList /> },
       { path: 'register/trace', element: <RegisterTrace /> },
       { path: 'register/detail/:id', element: <Placeholder title="入驻申请详情" /> },
       { path: 'register/form-config', element: <FormConfig /> },
-      { path: 'register/prescreen', element: <Prescreen /> },
       { path: 'register/remind', element: <RegisterRemind /> },
       { path: 'register/task', element: <RegisterTask /> },
 

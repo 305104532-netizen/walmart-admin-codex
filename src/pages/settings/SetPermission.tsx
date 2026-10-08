@@ -18,14 +18,17 @@ const roles: Role[] = [
 
 function permissionTree(role: PreviewRole): DataNode[] {
   return [
-    { title: '入驻管理', key: 'register', children: [
-      { title: '卖家入驻进度看板', key: 'r1' },
+    { title: '成长中心', key: 'growth', children: [
+      { title: '卖家管理', key: 'growth-sellers' },
       { title: '溯源追踪', key: 'r2' },
       { title: '查看入驻表单', key: FORM_VIEW_PERMISSION },
       { title: '修改标准入驻表单', key: FORM_CONFIG_PERMISSION, disabled: role !== 'admin' && role !== 'superadmin' },
-      { title: '五要素预审', key: 'r4' },
+      { title: '评分/画像', key: 'g1' },
+      { title: '学习提醒配置', key: 'growth-remind' },
+      { title: '任务派发', key: 'growth-task' },
+      { title: '人群圈选', key: 'g2' },
+      { title: 'DAY-ONE白名单', key: 'g3' },
     ] },
-    { title: '成长中心', key: 'growth', children: [{ title: '评分/画像', key: 'g1' }, { title: '人群圈选', key: 'g2' }, { title: 'DAY-ONE白名单', key: 'g3' }] },
     { title: '内容管理', key: 'content', children: [{ title: '文章/视频', key: 'c1' }, { title: '分类/标签', key: 'c2' }] },
     { title: '活动管理', key: 'activity', children: [{ title: '活动/报名/签到', key: 'a1' }, { title: '线索归因', key: 'a2' }] },
     { title: '系统设置', key: 'settings', children: [{ title: '权限管理', key: 's1' }] },

@@ -7,8 +7,8 @@ import { lastNDates } from '../mock/util'
 import './Dashboard.css'
 
 const stats = [
-  { title: '总卖家数', value: 12456, change: 3.2, up: true, to: '/register/list' },
-  { title: '今日新增', value: 28, change: 12, up: true, to: '/register/list' },
+  { title: '总卖家数', value: 12456, change: 3.2, up: true, to: '/growth/sellers' },
+  { title: '今日新增', value: 28, change: 12, up: true, to: '/growth/sellers' },
   { title: '周活跃率', value: 34.5, suffix: '%', change: 2.1, up: false, to: '/data/behavior' },
   { title: '入驻转化率', value: 18.2, suffix: '%', change: 5.4, up: true, to: '/register/trace' },
 ]
@@ -51,7 +51,7 @@ export default function Dashboard() {
   const todos = [
     { color: 'red', text: '12个卖家报名待审核', to: '/activity/signup' },
     { color: 'gold', text: '28个卖家超7天未学习', to: '/register/remind' },
-    { color: 'green', text: '5个新入驻卖家待绑定PID', to: '/register/list' },
+    { color: 'green', text: '5个新入驻卖家待绑定PID', to: '/growth/sellers' },
   ]
 
   return (

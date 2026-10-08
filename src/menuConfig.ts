@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import {
-  DashboardOutlined, UserAddOutlined, RiseOutlined, ReadOutlined,
+  DashboardOutlined, RiseOutlined, ReadOutlined,
   CalendarOutlined, BarChartOutlined, MessageOutlined, AppstoreOutlined, SettingOutlined,
 } from '@ant-design/icons'
 import { createElement } from 'react'
@@ -12,24 +12,17 @@ export interface MenuNode {
   children?: { key: string; label: string }[]
 }
 
-// 左侧菜单（8 大模块 / 42 页面），key 即路由 path
+// 左侧菜单（8 大模块），key 即路由 path
 export const menuConfig: MenuNode[] = [
   { key: '/dashboard', label: '首页看板', icon: createElement(DashboardOutlined) },
-  {
-    key: 'register', label: '入驻管理', icon: createElement(UserAddOutlined),
-    children: [
-      { key: '/register/list', label: '卖家入驻进度看板' },
-      { key: '/register/trace', label: '溯源追踪' },
-      { key: '/register/form-config', label: '入驻表单字段配置' },
-      { key: '/register/prescreen', label: '五要素预审(5FA)' },
-      { key: '/register/remind', label: '学习提醒配置' },
-      { key: '/register/task', label: '任务派发' },
-    ],
-  },
   {
     key: 'growth', label: '成长中心', icon: createElement(RiseOutlined),
     children: [
       { key: '/growth/sellers', label: '卖家管理' },
+      { key: '/register/trace', label: '溯源追踪' },
+      { key: '/register/form-config', label: '入驻表单字段配置' },
+      { key: '/register/remind', label: '学习提醒配置' },
+      { key: '/register/task', label: '任务派发' },
       { key: '/growth/score', label: '评分体系配置' },
       { key: '/growth/persona', label: '用户画像管理' },
       { key: '/growth/tags', label: '标签管理' },

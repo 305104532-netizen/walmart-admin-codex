@@ -46,6 +46,7 @@ export default function GrowthSellers() {
 
   const columns = [
     { title: '卖家姓名', key: 'seller', fixed: 'left' as const, width: 180, render: (_: unknown, seller: GrowthSeller) => <Space><Avatar style={{ background: '#E8F1FF', color: '#1A56DB' }} icon={<UserOutlined />} /><Button type="link" style={{ padding: 0, height: 'auto', fontWeight: 600 }} onClick={() => openDetail(seller)}>{seller.name}</Button></Space> },
+    { title: 'PID', key: 'pid', width: 145, render: (_: unknown, seller: GrowthSeller) => seller.sellerId ? <Typography.Text code copyable={{ text: seller.sellerId }}>{seller.sellerId}</Typography.Text> : <Typography.Text type="secondary">—</Typography.Text> },
     { title: 'openid', dataIndex: 'openid', width: 190, render: (value: string) => <Typography.Text code copyable={{ text: value }}>{value}</Typography.Text> },
     { title: 'unionid', dataIndex: 'unionid', width: 190, render: (value: string) => <Typography.Text code copyable={{ text: value }}>{value}</Typography.Text> },
     { title: '站点', dataIndex: 'sites', width: 130, render: (sites: SellerSite[]) => <Space size={[0, 4]} wrap>{sites.map((value) => <Tag key={value}>{value}</Tag>)}</Space> },
@@ -76,7 +77,7 @@ export default function GrowthSellers() {
       <Col xs={24} lg={14}><Card size="small" title="五维成长评分">{SCORE_LABELS.map(([key, label]) => <div key={key} style={{ marginBottom: 14 }}><Space style={{ display: 'flex', justifyContent: 'space-between' }}><Typography.Text>{label}</Typography.Text><Typography.Text strong>{detail.scores[key]}</Typography.Text></Space><Progress percent={detail.scores[key]} showInfo={false} strokeColor={scoreColor(detail.scores[key])} /></div>)}</Card></Col>
       <Col xs={24} lg={10}><Card size="small" title="卖家概览"><Descriptions column={1} size="small" items={[
         { key: 'category', label: '主营类目', children: detail.category }, { key: 'site', label: '经营站点', children: detail.sites.join('、') },
-        { key: 'sellerId', label: 'Seller ID', children: detail.sellerId ?? '上线后生成' },
+        { key: 'sellerId', label: 'PID', children: detail.sellerId ?? '上线后生成' },
         { key: 'openid', label: 'openid', children: <Typography.Text code copyable>{detail.openid}</Typography.Text> },
         { key: 'unionid', label: 'unionid', children: <Typography.Text code copyable>{detail.unionid}</Typography.Text> },
         { key: 'manager', label: '所属招商', children: `${detail.manager} · ${detail.department}` },
@@ -89,7 +90,7 @@ export default function GrowthSellers() {
     ]} /></Card>
     <Card size="small" title="店铺信息" extra={<Typography.Text type="secondary">当前绑定 {detail.stores.filter((store) => store.binding === 'current').length} 家 · 历史绑定 {detail.stores.filter((store) => store.binding === 'historical').length} 家</Typography.Text>}>
       <Table rowKey="id" size="small" pagination={false} dataSource={detail.stores} scroll={{ x: 820 }} columns={[
-        { title: '店铺名称', dataIndex: 'name', width: 230, render: (value: string, store: SellerStore) => <Space orientation="vertical" size={2}><Typography.Text strong>{value}</Typography.Text>{store.sellerId && <Typography.Text type="secondary" copyable={{ text: store.sellerId }} style={{ fontSize: 12 }}>Seller ID：{store.sellerId}</Typography.Text>}</Space> },
+        { title: '店铺名称', dataIndex: 'name', width: 230, render: (value: string, store: SellerStore) => <Space orientation="vertical" size={2}><Typography.Text strong>{value}</Typography.Text>{store.sellerId && <Typography.Text type="secondary" copyable={{ text: store.sellerId }} style={{ fontSize: 12 }}>PID：{store.sellerId}</Typography.Text>}</Space> },
         { title: '绑定关系', dataIndex: 'binding', width: 110, render: (value: SellerStore['binding']) => <Tag color={value === 'current' ? 'blue' : 'default'}>{value === 'current' ? '当前绑定' : '历史绑定'}</Tag> },
         { title: '站点', dataIndex: 'site', width: 80, render: (value: SellerSite) => <Tag>{value}</Tag> },
         { title: '入驻状态', dataIndex: 'registrationStatus', width: 110, render: (value: SellerRegistrationStatus) => <Tag color={STATUS[value].color}>{STATUS[value].label}</Tag> },
@@ -104,7 +105,7 @@ export default function GrowthSellers() {
     <Card size="small"><Space wrap size={12}><Typography.Text strong>查看店铺</Typography.Text><Select value={selectedStore.id} onChange={setSelectedStoreId} style={{ width: 360 }} options={detail.stores.map((store) => ({ value: store.id, label: `${store.name} · ${store.site} · ${store.binding === 'current' ? '当前绑定' : '历史绑定'}` }))} /><Tag color={selectedStore.binding === 'current' ? 'blue' : 'default'}>{selectedStore.binding === 'current' ? '当前绑定' : '历史绑定'}</Tag>{selectedStore.unboundAt && <Typography.Text type="secondary">解绑于 {selectedStore.unboundAt}</Typography.Text>}</Space></Card>
     <Row gutter={[16, 16]}><Col xs={12} md={6}><Card size="small"><Statistic title="入驻状态" value={STATUS[selectedStore.registrationStatus].label} /></Card></Col><Col xs={12} md={6}><Card size="small"><Statistic title="申请进度" value={selectedStore.registrationProgress} suffix="%" /></Card></Col><Col xs={12} md={6}><Card size="small"><Statistic title="五要素5FA" value={selectedStore.fiveFaStatus} /></Card></Col><Col xs={12} md={6}><Card size="small"><Statistic title="申请站点" value={selectedStore.site} /></Card></Col></Row>
     <Card size="small" title="入驻档案 · 基础与业务归属"><Descriptions bordered size="small" column={{ xs: 1, md: 2 }} items={[
-      { key: 'store', label: '店铺名称', children: selectedStore.name }, { key: 'sellerId', label: 'Seller ID', children: selectedStore.sellerId ?? '上线后生成' },
+      { key: 'store', label: '店铺名称', children: selectedStore.name }, { key: 'sellerId', label: 'PID', children: selectedStore.sellerId ?? '上线后生成' },
       { key: 'company', label: '企业主体', children: selectedStore.legalEntity }, { key: 'country', label: '注册国家/地区', children: detail.country },
       { key: 'name', label: '联系人', children: detail.name }, { key: 'phone', label: '手机号', children: detail.phone },
       { key: 'email', label: '邮箱', children: detail.email }, { key: 'form', label: '入驻表单', children: selectedStore.formVersion },
@@ -150,7 +151,7 @@ export default function GrowthSellers() {
     <Row gutter={[16, 16]}><Col xs={12} md={6}><Card size="small"><Statistic title="全部卖家" value={GROWTH_SELLERS.length} prefix={<TeamOutlined />} /></Card></Col><Col xs={12} md={6}><Card size="small"><Statistic title="未入驻" value={counts.unregistered} /></Card></Col><Col xs={12} md={6}><Card size="small"><Statistic title="审核中" value={counts.pending} /></Card></Col><Col xs={12} md={6}><Card size="small"><Statistic title="已上线" value={counts.online} /></Card></Col></Row>
     <Card>
       <Space wrap style={{ marginBottom: 16 }}>
-        <Input allowClear prefix={<SearchOutlined />} placeholder="卖家 / 公司 / 邮箱 / Seller ID / openid / unionid" value={keyword} onChange={(event) => setKeyword(event.target.value)} style={{ width: 360 }} />
+    <Input allowClear prefix={<SearchOutlined />} placeholder="卖家 / 公司 / 邮箱 / PID / openid / unionid" value={keyword} onChange={(event) => setKeyword(event.target.value)} style={{ width: 360 }} />
         <Select allowClear placeholder="经营站点" value={site} onChange={setSite} style={{ width: 130 }} options={['US', 'CA', 'MX'].map((value) => ({ value, label: value }))} />
         <Select allowClear placeholder="360°画像" value={persona} onChange={setPersona} style={{ width: 160 }} options={Object.keys(PERSONA_COLORS).map((value) => ({ value, label: value }))} />
         <Select allowClear placeholder="所属经理" value={manager} onChange={setManager} style={{ width: 150 }} options={[...new Set(GROWTH_SELLERS.map((seller) => seller.manager))].map((value) => ({ value, label: value }))} />
