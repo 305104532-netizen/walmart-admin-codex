@@ -4,7 +4,7 @@ import dayjs from 'dayjs'
 import type { Dayjs } from 'dayjs'
 import {
   Alert, Button, Card, Col, DatePicker, Descriptions, Divider, Drawer, Empty, Form, Image, Input,
-  InputNumber, Modal, Popconfirm, QRCode, Row, Segmented, Select, Space, Statistic, Table, Tabs,
+  InputNumber, Modal, Popconfirm, QRCode, Row, Segmented, Select, Space, Statistic, Switch, Table, Tabs,
   Tag, Tooltip, Typography, Upload, message,
 } from 'antd'
 import {
@@ -14,7 +14,7 @@ import {
   QrcodeOutlined, SearchOutlined, SettingOutlined, ShopOutlined, VideoCameraOutlined,
 } from '@ant-design/icons'
 import ImageUpload from '../../components/ImageUpload'
-import { DEFAULT_MINI_PROGRAM_PAGES } from '../../models/tempPages'
+import { DEFAULT_MINI_PROGRAM_PAGES, readRegistrationTraceSettings, saveRegistrationTraceSettings } from '../../models/tempPages'
 import type { ChannelParam, MiniProgramPage, TempPageStatus } from '../../models/tempPages'
 import { DEFAULT_REGISTER_GUIDE, readRegisterGuidePage, saveRegisterGuidePage } from '../../models/registerGuide'
 import type { GuideFaq, GuideFlow, GuideItem, GuidePolicy, GuideSchedule, GuideSection, GuideSite, PromoStat, RegisterGuideConfig } from '../../models/registerGuide'
@@ -153,7 +153,11 @@ function PhoneBlock({ block }: { block: PageBlock }) {
 }
 
 export default function ResPages() {
-  const [pages, setPages] = useState<MiniProgramPage[]>(() => DEFAULT_MINI_PROGRAM_PAGES.map((page) => page.id === 'page-register' ? readRegisterGuidePage(page) : page))
+  const [pages, setPages] = useState<MiniProgramPage[]>(() => {
+    const traceSettings = readRegistrationTraceSettings()
+    return DEFAULT_MINI_PROGRAM_PAGES.map((page) => page.id === 'page-register' ? readRegisterGuidePage(page)
+      : page.kind === 'temporary' ? { ...page, registrationTraceEnabled: traceSettings[page.id] ?? false } : page)
+  })
   const [keyword, setKeyword] = useState('')
   const [kind, setKind] = useState<string>('all')
   const [status, setStatus] = useState<string>('all')
@@ -259,6 +263,18 @@ export default function ResPages() {
   const deletePage = (page: MiniProgramPage) => {
     setPages((current) => current.filter((item) => item.id !== page.id))
     messageApi.success('页面已删除')
+  }
+
+  const toggleRegistrationTrace = (page: MiniProgramPage, enabled: boolean) => {
+    if (page.kind !== 'temporary') return
+    const settings = Object.fromEntries(pages.filter((item) => item.kind === 'temporary' && item.registrationTraceEnabled)
+      .map((item) => [item.id, true]))
+    if (enabled) settings[page.id] = true
+    else delete settings[page.id]
+    try { saveRegistrationTraceSettings(settings) }
+    catch { messageApi.error('入驻溯源配置保存失败，请检查浏览器存储空间'); return }
+    setPages((current) => current.map((item) => item.id === page.id ? { ...item, registrationTraceEnabled: enabled } : item))
+    messageApi.success(`入驻溯源已${enabled ? '开启' : '关闭'}`)
   }
 
   const openBuilder = (page?: MiniProgramPage) => {
@@ -478,6 +494,12 @@ export default function ResPages() {
       render: (_: unknown, page: MiniProgramPage) => !page.validFrom ? <Tag variant="filled">长期有效</Tag> : <div><Typography.Text>{page.validFrom}</Typography.Text><br /><Typography.Text type="secondary">至 {page.validTo}</Typography.Text>{page.status === 'online' && page.validTo && dayjs(page.validTo).diff(dayjs(), 'day') <= 30 && <Tag color="orange" variant="filled">即将到期</Tag>}</div>,
     },
     {
+      title: '入驻溯源', key: 'registrationTrace', width: 120,
+      render: (_: unknown, page: MiniProgramPage) => page.kind === 'temporary'
+        ? <Switch size="small" checked={!!page.registrationTraceEnabled} onChange={(enabled) => toggleRegistrationTrace(page, enabled)} aria-label={`${page.title}入驻溯源`} />
+        : <Typography.Text type="secondary">—</Typography.Text>,
+    },
+    {
       title: '状态', dataIndex: 'status', width: 100,
       render: (value: TempPageStatus) => <Tag color={STATUS_META[value].color}>{STATUS_META[value].label}</Tag>,
     },
@@ -515,7 +537,7 @@ export default function ResPages() {
         <Select value={kind} onChange={setKind} style={{ width: 140 }} options={[{ value: 'all', label: '全部类型' }, { value: 'system', label: '系统页面' }, { value: 'temporary', label: '自定义页面' }]} />
         <Select value={status} onChange={setStatus} style={{ width: 140 }} options={[{ value: 'all', label: '全部状态' }, ...Object.entries(STATUS_META).map(([value, item]) => ({ value, label: item.label }))]} />
       </div>
-      <Table rowKey="id" columns={columns} dataSource={filteredPages} scroll={{ x: 1390 }} pagination={{ pageSize: 10, showTotal: (total) => '共 ' + total + ' 个页面' }} />
+      <Table rowKey="id" columns={columns} dataSource={filteredPages} scroll={{ x: 1510 }} pagination={{ pageSize: 10, showTotal: (total) => '共 ' + total + ' 个页面' }} />
     </Card>
 
     <Drawer open={!!editing} onClose={() => setEditing(undefined)} title={editing ? '编辑页面 · ' + editing.title : '编辑页面'} size={editing?.id === 'page-register' ? 'min(920px, 96vw)' : 'min(720px, 94vw)'}

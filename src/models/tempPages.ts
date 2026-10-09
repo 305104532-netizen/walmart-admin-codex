@@ -26,6 +26,25 @@ export interface MiniProgramPage {
   updatedAt: string
   componentCount: number
   registerGuide?: RegisterGuideConfig
+  registrationTraceEnabled?: boolean
+}
+
+const REGISTRATION_TRACE_STORAGE_KEY = 'walmart-admin-page-registration-trace-v1'
+
+export function readRegistrationTraceSettings(): Record<string, boolean> {
+  try {
+    const raw = window.localStorage.getItem(REGISTRATION_TRACE_STORAGE_KEY)
+    if (!raw) return {}
+    const stored: unknown = JSON.parse(raw)
+    if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return {}
+    return Object.fromEntries(Object.entries(stored).filter((entry): entry is [string, boolean] => typeof entry[1] === 'boolean'))
+  } catch {
+    return {}
+  }
+}
+
+export function saveRegistrationTraceSettings(settings: Record<string, boolean>): void {
+  window.localStorage.setItem(REGISTRATION_TRACE_STORAGE_KEY, JSON.stringify(settings))
 }
 
 export const DEFAULT_MINI_PROGRAM_PAGES: MiniProgramPage[] = [
