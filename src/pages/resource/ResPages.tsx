@@ -532,13 +532,7 @@ export default function ResPages() {
             <Row gutter={16}><Col span={12}><Form.Item label="页面状态" name="status"><Select options={Object.entries(STATUS_META).map(([value, item]) => ({ value, label: item.label }))} /></Form.Item></Col><Col span={12}><Form.Item label="有效期" name="validityMode"><Segmented block options={[{ label: '长期有效', value: 'long' }, { label: '指定日期', value: 'range' }]} /></Form.Item></Col></Row>
             {editValidityMode === 'range' && <Form.Item label="生效时间" name="period" rules={[{ required: true, message: '请选择有效期' }]}><DatePicker.RangePicker style={{ width: '100%' }} /></Form.Item>}
           </> },
-          { key: 'channel', label: '渠道参数', forceRender: true, children: <>
-            <Alert type="warning" showIcon title="渠道参数会追加在页面路径后，用于区分广告、BD经理或活动来源。支持 {channel}、{bd_code} 等动态参数。" style={{ marginBottom: 16 }} />
-            <Form.List name="channels">{(fields, { add, remove }) => <Space orientation="vertical" size={12} style={{ width: '100%' }}>
-              {fields.map(({ key, name, ...rest }) => <Card key={key} size="small"><Row gutter={8} align="middle"><Col span={7}><Form.Item {...rest} name={[name, 'key']} label="参数名" rules={[{ required: true }]}><Input placeholder="source" /></Form.Item></Col><Col span={7}><Form.Item {...rest} name={[name, 'value']} label="参数值" rules={[{ required: true }]}><Input placeholder="wechat" /></Form.Item></Col><Col span={8}><Form.Item {...rest} name={[name, 'note']} label="渠道说明"><Input placeholder="公众号推文" /></Form.Item></Col><Col span={2}><Button danger type="text" icon={<DeleteOutlined />} aria-label="删除渠道参数" onClick={() => remove(name)} /></Col></Row></Card>)}
-              <Button block type="dashed" icon={<PlusOutlined />} onClick={() => add({ key: '', value: '', note: '' })}>添加渠道参数</Button>
-            </Space>}</Form.List>
-          </> },
+          { key: 'channel', label: '渠道参数', forceRender: true, children: <ChannelParamsFields /> },
           { key: 'share', label: '分享卡片', forceRender: true, children: <Row gutter={[20, 20]}><Col xs={24} md={14}><Form.Item label="分享小程序卡片标题" name="shareTitle" rules={[{ required: true, message: '请输入分享标题' }]}><Input.TextArea rows={3} maxLength={45} showCount /></Form.Item><Form.Item label="卡片封面图" name="shareCover"><ImageUpload label="分享卡片封面" maxMB={5} /></Form.Item></Col><Col xs={24} md={10}><ShareCard title={editShareTitle || editing?.title || ''} cover={editShareCover} /></Col></Row> },
           ...(editing?.id === 'page-register' ? [{ key: 'guide', label: '入驻指引', children: <RegisterGuideFields activeKey={guideTab} onChange={setGuideTab} />, forceRender: true }] : []),
         ]} />
@@ -612,18 +606,7 @@ export default function ResPages() {
               <Form.Item label="页面路径" name="path" rules={[{ required: true, message: '请输入页面路径' }, { pattern: /^\/pages\/temp\/[a-z0-9-]+$/, message: '路径格式：/pages/temp/英文或数字' }]}><Input prefix={<LinkOutlined />} /></Form.Item>
               <Form.Item label="有效期" name="period" rules={[{ required: true, message: '请选择有效期' }]}><DatePicker.RangePicker style={{ width: '100%' }} /></Form.Item>
             </> },
-            { key: 'channel', label: '渠道参数', forceRender: true, children: <>
-              <Alert type="warning" showIcon title="渠道参数会追加在页面路径后，用于区分广告、BD经理或活动来源。支持 {channel}、{bd_code} 等动态参数。" style={{ marginBottom: 16 }} />
-              <Form.List name="channels">{(fields, { add, remove }) => <Space orientation="vertical" size={12} style={{ width: '100%' }}>
-                {fields.map(({ key, name, ...rest }, index) => <div className="builder-channel-entry" key={key}>
-                  <div className="builder-channel-entry-head"><Typography.Text strong>参数 {index + 1}</Typography.Text><Button danger type="text" icon={<DeleteOutlined />} aria-label="删除渠道参数" onClick={() => remove(name)} /></div>
-                  <Form.Item {...rest} name={[name, 'key']} label="参数名" rules={[{ required: true, message: '请输入参数名' }]}><Input placeholder="source" /></Form.Item>
-                  <Form.Item {...rest} name={[name, 'value']} label="参数值" rules={[{ required: true, message: '请输入参数值' }]}><Input placeholder="wechat" /></Form.Item>
-                  <Form.Item {...rest} name={[name, 'note']} label="渠道说明"><Input placeholder="公众号推文" /></Form.Item>
-                </div>)}
-                <Button block type="dashed" icon={<PlusOutlined />} onClick={() => add({ key: '', value: '', note: '' })}>添加渠道参数</Button>
-              </Space>}</Form.List>
-            </> },
+            { key: 'channel', label: '渠道参数', forceRender: true, children: <ChannelParamsFields /> },
             { key: 'share', label: '分享卡片', forceRender: true, children: <>
               <Form.Item label="分享小程序卡片标题" name="shareTitle" rules={[{ required: true, message: '请输入分享标题' }]}><Input.TextArea rows={3} maxLength={45} showCount /></Form.Item>
               <Form.Item label="卡片封面图" name="shareCover"><ImageUpload label="分享卡片封面" maxMB={5} /></Form.Item>
@@ -636,6 +619,16 @@ export default function ResPages() {
       </div>
     </Drawer>
   </div></>
+}
+
+function ChannelParamsFields() {
+  return <div className="channel-param-editor">
+    <Alert type="warning" showIcon title="渠道参数会追加在页面路径后，用于区分广告、BD经理或活动来源。支持 {channel}、{bd_code} 等动态参数。" style={{ marginBottom: 16 }} />
+    <Form.List name="channels">{(fields, { add, remove }) => <Space orientation="vertical" size={12} style={{ width: '100%' }}>
+      {fields.map(({ key, name, ...rest }) => <Card key={key} size="small" className="channel-param-card"><Row className="channel-param-row" gutter={8} align="middle"><Col span={7}><Form.Item {...rest} name={[name, 'key']} label="参数名" rules={[{ required: true }]}><Input placeholder="source" /></Form.Item></Col><Col span={7}><Form.Item {...rest} name={[name, 'value']} label="参数值" rules={[{ required: true }]}><Input placeholder="wechat" /></Form.Item></Col><Col span={8}><Form.Item {...rest} name={[name, 'note']} label="渠道说明"><Input placeholder="公众号推文" /></Form.Item></Col><Col span={2}><Button danger type="text" icon={<DeleteOutlined />} aria-label="删除渠道参数" onClick={() => remove(name)} /></Col></Row></Card>)}
+      <Button block type="dashed" icon={<PlusOutlined />} onClick={() => add({ key: '', value: '', note: '' })}>添加渠道参数</Button>
+    </Space>}</Form.List>
+  </div>
 }
 
 function ShareCard({ title, cover }: { title: string; cover?: string }) {

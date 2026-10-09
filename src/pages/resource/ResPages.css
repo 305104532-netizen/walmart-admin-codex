@@ -136,9 +136,15 @@
 .builder-inspector { border-left: 1px solid var(--page-border); }
 .builder-inspector .ant-tabs-nav-list { gap: 12px; }
 .builder-inspector .ant-tabs-tab { margin: 0 !important; }
-.builder-channel-entry { padding: 12px 12px 0; border: 1px solid var(--page-border); border-radius: 6px; }
-.builder-channel-entry-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.builder-channel-entry .ant-form-item { margin-bottom: 12px; }
+.channel-param-editor { container-type: inline-size; }
+.channel-param-card .ant-form-item { min-width: 0; }
+@container (max-width: 480px) {
+  .channel-param-row { display: block; position: relative; }
+  .channel-param-row > .ant-col { max-width: 100%; }
+  .channel-param-row > .ant-col:last-child { position: absolute; top: 0; right: 0; width: 32px; }
+  .channel-param-row > .ant-col:first-child .ant-form-item-label { padding-right: 32px; }
+  .channel-param-card .ant-form-item { margin-bottom: 12px; }
+}
 .builder-panel-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .builder-panel-title > div,
 .builder-stage-head > div { display: flex; flex-direction: column; gap: 2px; }
