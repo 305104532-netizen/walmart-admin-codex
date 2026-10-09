@@ -266,9 +266,11 @@ export default function ResPages() {
 
   const openBuilder = (page?: MiniProgramPage) => {
     const suffix = dayjs().format('MMDD-HHmm')
+    builderForm.resetFields()
     builderForm.setFieldsValue({
       title: page?.title ?? '', path: page?.path ?? '/pages/temp/page-' + suffix,
       period: page?.validFrom && page.validTo ? [dayjs(page.validFrom), dayjs(page.validTo)] : [dayjs(), dayjs().add(30, 'day')],
+      channels: page?.channels ?? [],
       shareTitle: page?.shareTitle ?? '', shareCover: page?.shareCover ?? '',
     })
     setBuilderEditing(page)
@@ -409,7 +411,14 @@ export default function ResPages() {
   }
 
   const saveNewPage = async (asDraft: boolean) => {
-    const values = await builderForm.validateFields()
+    let values
+    try { values = await builderForm.validateFields() }
+    catch {
+      const name = builderForm.getFieldsError().find((field) => field.errors.length > 0)?.name
+      setBuilderTab(name?.[0] === 'channels' ? 'channel' : name?.[0] === 'shareTitle' || name?.[0] === 'shareCover' ? 'share' : 'page')
+      messageApi.warning('请完善必填内容后保存')
+      return
+    }
     if (!blocks.length) {
       messageApi.warning('请至少添加一个页面组件')
       return
@@ -420,7 +429,8 @@ export default function ResPages() {
     const next: MiniProgramPage = {
       ...(builderEditing ?? { id: 'temp-' + Date.now(), kind: 'temporary' as const, pv: 0, uv: 0, channels: [] }),
       title: values.title, path: values.path, validFrom: start?.format('YYYY-MM-DD'), validTo: end?.format('YYYY-MM-DD'), status: nextStatus,
-      shareTitle: values.shareTitle || values.title, shareCover: values.shareCover || '',
+      channels: (values.channels ?? []).filter((item: ChannelParam) => item?.key && item?.value),
+      shareTitle: values.shareTitle, shareCover: values.shareCover || '',
       updatedAt: dayjs().format('YYYY-MM-DD HH:mm'), componentCount: blocks.length,
     }
     setPages((current) => builderEditing ? current.map((page) => page.id === next.id ? next : page) : [next, ...current])
@@ -595,18 +605,33 @@ export default function ResPages() {
         </main>
 
         <aside className="builder-inspector">
-          <Tabs activeKey={builderTab} onChange={setBuilderTab} items={[
-            { key: 'page', label: '页面设置', children: <Form form={builderForm} layout="vertical">
+          <Form form={builderForm} layout="vertical">
+            <Tabs activeKey={builderTab} onChange={setBuilderTab} items={[
+            { key: 'page', label: '页面设置', forceRender: true, children: <>
               <Form.Item label="小程序页面标题" name="title" rules={[{ required: true, message: '请输入页面标题' }]}><Input placeholder="例如：新品发布专题" maxLength={30} showCount /></Form.Item>
               <Form.Item label="页面路径" name="path" rules={[{ required: true, message: '请输入页面路径' }, { pattern: /^\/pages\/temp\/[a-z0-9-]+$/, message: '路径格式：/pages/temp/英文或数字' }]}><Input prefix={<LinkOutlined />} /></Form.Item>
               <Form.Item label="有效期" name="period" rules={[{ required: true, message: '请选择有效期' }]}><DatePicker.RangePicker style={{ width: '100%' }} /></Form.Item>
-              <Divider plain>分享卡片</Divider>
-              <Form.Item label="分享小程序卡片标题" name="shareTitle"><Input.TextArea rows={3} maxLength={45} showCount placeholder="不填写则使用页面标题" /></Form.Item>
+            </> },
+            { key: 'channel', label: '渠道参数', forceRender: true, children: <>
+              <Alert type="warning" showIcon title="渠道参数会追加在页面路径后，用于区分广告、BD经理或活动来源。支持 {channel}、{bd_code} 等动态参数。" style={{ marginBottom: 16 }} />
+              <Form.List name="channels">{(fields, { add, remove }) => <Space orientation="vertical" size={12} style={{ width: '100%' }}>
+                {fields.map(({ key, name, ...rest }, index) => <div className="builder-channel-entry" key={key}>
+                  <div className="builder-channel-entry-head"><Typography.Text strong>参数 {index + 1}</Typography.Text><Button danger type="text" icon={<DeleteOutlined />} aria-label="删除渠道参数" onClick={() => remove(name)} /></div>
+                  <Form.Item {...rest} name={[name, 'key']} label="参数名" rules={[{ required: true, message: '请输入参数名' }]}><Input placeholder="source" /></Form.Item>
+                  <Form.Item {...rest} name={[name, 'value']} label="参数值" rules={[{ required: true, message: '请输入参数值' }]}><Input placeholder="wechat" /></Form.Item>
+                  <Form.Item {...rest} name={[name, 'note']} label="渠道说明"><Input placeholder="公众号推文" /></Form.Item>
+                </div>)}
+                <Button block type="dashed" icon={<PlusOutlined />} onClick={() => add({ key: '', value: '', note: '' })}>添加渠道参数</Button>
+              </Space>}</Form.List>
+            </> },
+            { key: 'share', label: '分享卡片', forceRender: true, children: <>
+              <Form.Item label="分享小程序卡片标题" name="shareTitle" rules={[{ required: true, message: '请输入分享标题' }]}><Input.TextArea rows={3} maxLength={45} showCount /></Form.Item>
               <Form.Item label="卡片封面图" name="shareCover"><ImageUpload label="分享卡片封面" maxMB={5} /></Form.Item>
               <ShareCard title={builderShareTitle} cover={builderShareCover} />
-            </Form> },
+            </> },
             { key: 'component', label: '组件配置', children: selectedBlock ? <BlockInspector block={selectedBlock} update={updateBlock} remove={() => removeBlock(selectedBlock.id)} notify={messageApi.success} fail={messageApi.error} /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="请在画布中选择组件" /> },
           ]} />
+          </Form>
         </aside>
       </div>
     </Drawer>
