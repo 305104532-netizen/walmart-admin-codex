@@ -177,7 +177,6 @@ export default function ResPages() {
   const [editForm] = Form.useForm()
   const [builderForm] = Form.useForm()
   const [messageApi, messageContextHolder] = message.useMessage()
-  const editValidityMode = Form.useWatch('validityMode', editForm)
   const builderTitle = Form.useWatch('title', builderForm) || '未命名自定义页面'
   const builderShareTitle = Form.useWatch('shareTitle', builderForm) || builderTitle
   const builderShareCover = Form.useWatch('shareCover', builderForm)
@@ -210,12 +209,10 @@ export default function ResPages() {
     setEditTab('basic')
     setGuideTab('promo')
     setEditing(page)
+    editForm.resetFields()
     editForm.setFieldsValue({
       title: page.title,
       path: page.path,
-      status: page.status,
-      validityMode: page.validFrom ? 'range' : 'long',
-      period: page.validFrom && page.validTo ? [dayjs(page.validFrom), dayjs(page.validTo)] : undefined,
       channels: page.channels,
       shareTitle: page.shareTitle,
       shareCover: page.shareCover,
@@ -241,10 +238,10 @@ export default function ResPages() {
     const next: MiniProgramPage = {
       ...editing,
       title: values.title,
-      status: values.status,
+      status: editing.status,
       channels: (values.channels ?? []).filter((item: ChannelParam) => item?.key && item?.value),
-      validFrom: values.validityMode === 'range' ? values.period?.[0]?.format('YYYY-MM-DD') : undefined,
-      validTo: values.validityMode === 'range' ? values.period?.[1]?.format('YYYY-MM-DD') : undefined,
+      validFrom: editing.validFrom,
+      validTo: editing.validTo,
       shareTitle: values.shareTitle,
       shareCover: values.shareCover ?? '',
       ...(editing.id === 'page-register' ? { registerGuide: guideFromForm(values.registerGuide) } : {}),
@@ -529,8 +526,6 @@ export default function ResPages() {
           { key: 'basic', label: '页面设置', forceRender: true, children: <>
             <Form.Item label="小程序页面标题" name="title" rules={[{ required: true, message: '请输入页面标题' }]}><Input maxLength={30} showCount /></Form.Item>
             <Form.Item label="页面路径" name="path"><Input disabled prefix={<LinkOutlined />} /></Form.Item>
-            <Row gutter={16}><Col span={12}><Form.Item label="页面状态" name="status"><Select options={Object.entries(STATUS_META).map(([value, item]) => ({ value, label: item.label }))} /></Form.Item></Col><Col span={12}><Form.Item label="有效期" name="validityMode"><Segmented block options={[{ label: '长期有效', value: 'long' }, { label: '指定日期', value: 'range' }]} /></Form.Item></Col></Row>
-            {editValidityMode === 'range' && <Form.Item label="生效时间" name="period" rules={[{ required: true, message: '请选择有效期' }]}><DatePicker.RangePicker style={{ width: '100%' }} /></Form.Item>}
           </> },
           { key: 'channel', label: '渠道参数', forceRender: true, children: <ChannelParamsFields /> },
           { key: 'share', label: '分享卡片', forceRender: true, children: <Row gutter={[20, 20]}><Col xs={24} md={14}><Form.Item label="分享小程序卡片标题" name="shareTitle" rules={[{ required: true, message: '请输入分享标题' }]}><Input.TextArea rows={3} maxLength={45} showCount /></Form.Item><Form.Item label="卡片封面图" name="shareCover"><ImageUpload label="分享卡片封面" maxMB={5} /></Form.Item></Col><Col xs={24} md={10}><ShareCard title={editShareTitle || editing?.title || ''} cover={editShareCover} /></Col></Row> },
