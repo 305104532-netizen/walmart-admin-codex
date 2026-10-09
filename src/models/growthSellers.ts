@@ -1,6 +1,6 @@
-export type SellerRegistrationStatus = 'unregistered' | 'pending' | 'online'
+export type SellerRegistrationStatus = 'unregistered' | 'pending' | 'online' | 'rejected'
 export type SellerSite = 'US' | 'CA' | 'MX'
-export type SellerPersona = '基础培育' | '高意向待入驻' | '审核跟进' | '潜力成长' | '核心高质量'
+export type SellerPersona = '基础培育' | '高意向待入驻' | '审核跟进' | '审核未通过' | '潜力成长' | '核心高质量'
 export type SellerBehaviorChannel = '小程序' | '公众号' | '公众号菜单' | 'SCRM' | '自定义参数'
 
 export interface SellerBehaviorEvent {
@@ -58,7 +58,7 @@ export interface GrowthSeller {
   bindDate: string
   submittedAt?: string
   onlineAt?: string
-  fiveFaStatus: '未开始' | '审核中' | '已通过'
+  fiveFaStatus: '未开始' | '审核中' | '已通过' | '未通过'
   legalEntity: string
   country: string
   formVersion: string
@@ -108,6 +108,7 @@ function date(day: number, hour = 10, minute = 0): string { return `2026-08-${pa
 
 function statusFor(index: number): SellerRegistrationStatus {
   if (index % 5 === 0) return 'unregistered'
+  if (index % 7 === 2) return 'rejected'
   if (index % 3 === 0) return 'pending'
   return 'online'
 }
@@ -120,6 +121,7 @@ function sitesFor(index: number): SellerSite[] {
 function personaFor(status: SellerRegistrationStatus, maturity: number, intent: number): SellerPersona {
   if (status === 'unregistered') return intent >= 65 ? '高意向待入驻' : '基础培育'
   if (status === 'pending') return '审核跟进'
+  if (status === 'rejected') return '审核未通过'
   return maturity >= 72 ? '核心高质量' : '潜力成长'
 }
 
@@ -128,6 +130,7 @@ function recommendationFor(persona: SellerPersona): string {
     基础培育: '推荐发送平台价值介绍和新卖家基础课程，观察内容浏览及入驻页访问变化。',
     高意向待入驻: '近期多次访问入驻页，建议招商经理在 24 小时内跟进并发送专属入驻表单。',
     审核跟进: '申请正在审核，优先核对五要素材料并提醒卖家补充缺失信息。',
+    审核未通过: '核对未通过原因与申请资料，联系卖家补正后重新提交。',
     潜力成长: '已上线且保持学习活跃，推荐 WFS、广告投放和旺季选品进阶课程。',
     核心高质量: '高活跃高成熟卖家，建议纳入重点运营名单并邀请参加峰会及品牌增长项目。',
   }[persona]
@@ -136,7 +139,7 @@ function recommendationFor(persona: SellerPersona): string {
 function buildTags(index: number, status: SellerRegistrationStatus, activeDays: number, courseCompletion: number): SellerTag[] {
   const updatedAt = `2026-09-${pad((index % 8) + 1)}`
   const result: SellerTag[] = [
-    { name: status === 'online' ? '已入驻' : status === 'pending' ? '审核中' : '未入驻', type: 'auto', source: '入驻状态', updatedAt },
+    { name: status === 'online' ? '已入驻' : status === 'pending' ? '审核中' : status === 'rejected' ? '未通过' : '未入驻', type: 'auto', source: '入驻状态', updatedAt },
     { name: activeDays >= 12 ? '高活跃' : activeDays >= 5 ? '中活跃' : '低活跃', type: 'auto', source: '近30天行为', updatedAt },
     { name: courseCompletion >= 70 ? '学习达人' : '课程待完成', type: 'auto', source: '学习行为', updatedAt },
   ]
@@ -150,7 +153,7 @@ function buildBehaviors(index: number, status: SellerRegistrationStatus): Seller
   const actions = [
     '浏览内容',
     '搜索',
-    status === 'unregistered' ? '访问入驻页' : '查看入驻进度',
+    status === 'unregistered' ? '访问入驻页' : status === 'rejected' ? '查看审核结果' : '查看入驻进度',
     '报名活动',
     '完成课程',
   ]
@@ -165,7 +168,7 @@ function buildBehaviors(index: number, status: SellerRegistrationStatus): Seller
 
 function buildStores(index: number, status: SellerRegistrationStatus, progress: number, sites: SellerSite[], company: string, sellerId?: string): SellerStore[] {
   const createStore = (site: SellerSite, position: number, binding: SellerStore['binding'], storeStatus: SellerRegistrationStatus): SellerStore => {
-    const storeProgress = position === 0 ? progress : storeStatus === 'online' ? 100 : storeStatus === 'pending' ? 72 + index % 4 * 6 : 15
+    const storeProgress = position === 0 ? progress : storeStatus === 'online' ? 100 : storeStatus === 'pending' ? 72 + index % 4 * 6 : storeStatus === 'rejected' ? 90 : 15
     return {
       id: `store-${index + 1}-${position}`,
       name: `${company.replace('有限公司', '')}·${site}${binding === 'historical' ? '历史店' : '店'}`,
@@ -177,7 +180,7 @@ function buildStores(index: number, status: SellerRegistrationStatus, progress: 
       sellerId: storeStatus === 'online' ? (position === 0 ? sellerId : `10${String(200000 + index * 137 + position * 37)}`) : undefined,
       submittedAt: storeStatus === 'unregistered' ? undefined : date(index + position + 3),
       onlineAt: storeStatus === 'online' ? date(index + position + 8) : undefined,
-      fiveFaStatus: storeStatus === 'online' ? '已通过' : storeStatus === 'pending' ? '审核中' : '未开始',
+      fiveFaStatus: storeStatus === 'online' ? '已通过' : storeStatus === 'pending' ? '审核中' : storeStatus === 'rejected' ? '未通过' : '未开始',
       legalEntity: position === 0 ? company : `${company.replace('有限公司', '')}${site}业务有限公司`,
       formVersion: position === 0 ? '标准表单 v15' : '标准表单 v14',
     }
@@ -204,7 +207,7 @@ export const GROWTH_SELLERS: GrowthSeller[] = Array.from({ length: 60 }, (_, ind
   const activeDays30 = 1 + (index * 7) % 26
   const courseCompletion = status === 'online' ? 25 + (index * 9) % 76 : (index * 9) % 55
   const persona = personaFor(status, maturity, registrationIntent)
-  const progress = status === 'online' ? 100 : status === 'pending' ? 65 + (index % 4) * 8 : 10 + (index % 5) * 9
+  const progress = status === 'online' ? 100 : status === 'pending' ? 65 + (index % 4) * 8 : status === 'rejected' ? 90 : 10 + (index % 5) * 9
   const activity = index % 2 === 0 && status !== 'unregistered' ? ACTIVITIES[index % ACTIVITIES.length] : undefined
   const company = `${COMPANIES[index % COMPANIES.length]}有限公司`
   const sellerId = status === 'online' ? `10${String(100000 + index * 137).slice(-6)}` : undefined
@@ -230,7 +233,7 @@ export const GROWTH_SELLERS: GrowthSeller[] = Array.from({ length: 60 }, (_, ind
     bindDate: date(index + 1).slice(0, 10),
     submittedAt: status === 'unregistered' ? undefined : date(index + 3),
     onlineAt: status === 'online' ? date(index + 8) : undefined,
-    fiveFaStatus: status === 'online' ? '已通过' : status === 'pending' ? '审核中' : '未开始',
+    fiveFaStatus: status === 'online' ? '已通过' : status === 'pending' ? '审核中' : status === 'rejected' ? '未通过' : '未开始',
     legalEntity: `${COMPANIES[index % COMPANIES.length]}有限公司`,
     country: '中国',
     formVersion: '标准表单 v15',

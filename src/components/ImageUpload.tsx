@@ -16,6 +16,7 @@ const IMAGE_TYPES: Record<string, string> = {
 }
 const canPreview = (value: string) => {
   if (/^data:image\/(?:png|jpeg|webp|gif)(?:;name=[^;,]*)?;base64,[A-Za-z0-9+/=]+$/.test(value)) return true
+  if (value.startsWith('/') && !value.startsWith('//')) return true
   try { return /^https?:$/.test(new URL(value).protocol) }
   catch { return false }
 }

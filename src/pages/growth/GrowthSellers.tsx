@@ -7,9 +7,9 @@ import { getStandardTemplate, loadRegistrationTemplate } from '../../models/regi
 import type { RegistrationField } from '../../models/registrationTemplates'
 
 const STATUS: Record<SellerRegistrationStatus, { label: string; color: string }> = {
-  unregistered: { label: '未入驻', color: 'default' }, pending: { label: '审核中', color: 'gold' }, online: { label: '已上线', color: 'green' },
+  unregistered: { label: '未入驻', color: 'default' }, pending: { label: '审核中', color: 'gold' }, online: { label: '已上线', color: 'green' }, rejected: { label: '未通过', color: 'red' },
 }
-const PERSONA_COLORS: Record<SellerPersona, string> = { 基础培育: 'default', 高意向待入驻: 'blue', 审核跟进: 'gold', 潜力成长: 'cyan', 核心高质量: 'purple' }
+const PERSONA_COLORS: Record<SellerPersona, string> = { 基础培育: 'default', 高意向待入驻: 'blue', 审核跟进: 'gold', 审核未通过: 'red', 潜力成长: 'cyan', 核心高质量: 'purple' }
 const SCORE_LABELS: Array<[keyof GrowthSeller['scores'], string]> = [['maturity', '经营成熟度'], ['activity', '平台活跃度'], ['learning', '学习成长力'], ['registrationIntent', '入驻意向'], ['growthValue', '成长价值']]
 
 function scoreColor(value: number): string { return value >= 75 ? '#10B981' : value >= 50 ? '#1A56DB' : '#F59E0B' }
@@ -36,7 +36,7 @@ export default function GrowthSellers() {
   const filtered = useMemo(() => GROWTH_SELLERS.filter((seller) => (status === 'all' || seller.registrationStatus === status)
     && (!site || seller.sites.includes(site)) && (!persona || seller.persona === persona) && (!manager || seller.manager === manager)
     && (!keyword || `${seller.name}${seller.company}${seller.email}${seller.sellerId ?? ''}${seller.openid}${seller.unionid}`.toLowerCase().includes(keyword.toLowerCase()))), [keyword, manager, persona, site, status])
-  const counts = Object.fromEntries(['unregistered', 'pending', 'online'].map((key) => [key, GROWTH_SELLERS.filter((seller) => seller.registrationStatus === key).length])) as Record<SellerRegistrationStatus, number>
+  const counts = Object.fromEntries(['unregistered', 'pending', 'online', 'rejected'].map((key) => [key, GROWTH_SELLERS.filter((seller) => seller.registrationStatus === key).length])) as Record<SellerRegistrationStatus, number>
   const openDetail = (seller: GrowthSeller) => {
     setDetail(seller)
     setDetailTab('portrait')
@@ -62,7 +62,7 @@ export default function GrowthSellers() {
     { color: 'green', content: `${detail.bindDate} · 线索绑定至 ${detail.manager}${detail.activity ? `，来源活动：${detail.activity}` : ''}` },
     ...(selectedStore.submittedAt ? [{ color: 'green', content: `${selectedStore.submittedAt} · 提交 ${selectedStore.site} 站入驻申请` }] : [{ color: 'gray', content: '尚未提交入驻申请' }]),
     ...(selectedStore.registrationStatus === 'pending' ? [{ color: 'blue', content: '当前 · 五要素及资质材料审核中' }] : []),
-    ...(selectedStore.onlineAt ? [{ color: 'green', content: `${selectedStore.onlineAt} · 审核通过，店铺正式上线` }] : [{ color: 'gray', content: '店铺上线' }]),
+    ...(selectedStore.registrationStatus === 'rejected' ? [{ color: 'red', content: '入驻审核未通过，等待资料补正' }] : selectedStore.onlineAt ? [{ color: 'green', content: `${selectedStore.onlineAt} · 审核通过，店铺正式上线` }] : [{ color: 'gray', content: '店铺上线' }]),
   ] : []
   const registrationFieldColumns = detail && selectedStore ? [
     { title: '字段', key: 'field', width: 235, render: (_: unknown, field: RegistrationField) => <div><Space size={4}><Typography.Text strong>{field.label}</Typography.Text>{field.sensitive && <Tag color="red">敏感</Tag>}</Space><br /><Typography.Text type="secondary" style={{ fontSize: 12 }}>{field.en}</Typography.Text></div> },
@@ -148,7 +148,13 @@ export default function GrowthSellers() {
 
   return <Space orientation="vertical" size={16} style={{ width: '100%' }}>
     <div><Typography.Title level={4} style={{ margin: 0 }}>卖家管理</Typography.Title><Typography.Text type="secondary">统一查看卖家入驻档案、成长行为、标签和 360°画像</Typography.Text></div>
-    <Row gutter={[16, 16]}><Col xs={12} md={6}><Card size="small"><Statistic title="全部卖家" value={GROWTH_SELLERS.length} prefix={<TeamOutlined />} /></Card></Col><Col xs={12} md={6}><Card size="small"><Statistic title="未入驻" value={counts.unregistered} /></Card></Col><Col xs={12} md={6}><Card size="small"><Statistic title="审核中" value={counts.pending} /></Card></Col><Col xs={12} md={6}><Card size="small"><Statistic title="已上线" value={counts.online} /></Card></Col></Row>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16 }}>
+      <Card size="small"><Statistic title="全部卖家" value={GROWTH_SELLERS.length} prefix={<TeamOutlined />} /></Card>
+      <Card size="small"><Statistic title="未入驻" value={counts.unregistered} /></Card>
+      <Card size="small"><Statistic title="审核中" value={counts.pending} /></Card>
+      <Card size="small"><Statistic title="已上线" value={counts.online} /></Card>
+      <Card size="small"><Statistic title="未通过" value={counts.rejected} /></Card>
+    </div>
     <Card>
       <Space wrap style={{ marginBottom: 16 }}>
     <Input allowClear prefix={<SearchOutlined />} placeholder="卖家 / 公司 / 邮箱 / PID / openid / unionid" value={keyword} onChange={(event) => setKeyword(event.target.value)} style={{ width: 360 }} />
@@ -158,7 +164,7 @@ export default function GrowthSellers() {
       </Space>
       <Tabs activeKey={status} onChange={(key) => setStatus(key as typeof status)} items={[
         { key: 'all', label: `全部（${GROWTH_SELLERS.length}）` }, { key: 'unregistered', label: `未入驻（${counts.unregistered}）` },
-        { key: 'pending', label: `审核中（${counts.pending}）` }, { key: 'online', label: `已上线（${counts.online}）` },
+        { key: 'pending', label: `审核中（${counts.pending}）` }, { key: 'online', label: `已上线（${counts.online}）` }, { key: 'rejected', label: `未通过（${counts.rejected}）` },
       ]} />
       <Table rowKey="id" columns={columns} dataSource={filtered} pagination={{ pageSize: 15, showSizeChanger: true, showTotal: (total) => `共 ${total} 位卖家` }} scroll={{ x: 1500 }} locale={{ emptyText: <Empty description="未找到符合条件的卖家" /> }} />
     </Card>
