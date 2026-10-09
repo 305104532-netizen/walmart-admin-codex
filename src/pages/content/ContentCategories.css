@@ -1,0 +1,14 @@
+.taxonomy-page { width: 100%; }
+.taxonomy-page-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+.taxonomy-layout { display: grid; grid-template-columns: minmax(260px, 36%) minmax(0, 1fr); min-height: 450px; border-top: 1px solid var(--admin-border); }
+.taxonomy-tree, .taxonomy-detail { min-width: 0; padding: 24px 20px; }
+.taxonomy-tree { border-right: 1px solid var(--admin-border); }
+.taxonomy-tree .ant-tree { margin-top: 16px; background: transparent; }
+.taxonomy-tree .ant-tree-node-content-wrapper { min-width: 0; overflow-wrap: anywhere; }
+.taxonomy-detail .ant-empty { margin-top: 100px; }
+@media (max-width: 767px) {
+  .taxonomy-layout { grid-template-columns: 1fr; }
+  .taxonomy-tree { border-right: 0; border-bottom: 1px solid var(--admin-border); }
+  .taxonomy-tree, .taxonomy-detail { padding: 18px 0; }
+  .taxonomy-detail .ant-empty { margin: 24px 0; }
+}

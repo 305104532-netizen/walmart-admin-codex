@@ -178,7 +178,7 @@ export default function ResPages() {
   const [builderForm] = Form.useForm()
   const [messageApi, messageContextHolder] = message.useMessage()
   const editValidityMode = Form.useWatch('validityMode', editForm)
-  const builderTitle = Form.useWatch('title', builderForm) || '未命名临时页面'
+  const builderTitle = Form.useWatch('title', builderForm) || '未命名自定义页面'
   const builderShareTitle = Form.useWatch('shareTitle', builderForm) || builderTitle
   const builderShareCover = Form.useWatch('shareCover', builderForm)
 
@@ -426,7 +426,7 @@ export default function ResPages() {
     setPages((current) => builderEditing ? current.map((page) => page.id === next.id ? next : page) : [next, ...current])
     setPageLayouts((current) => ({ ...current, [next.id]: blocks }))
     setBuilderOpen(false)
-    messageApi.success(builderEditing ? (asDraft ? '页面修改已保存为草稿' : '临时页面已更新并发布') : (asDraft ? '草稿已保存' : '临时页面已创建并发布'))
+    messageApi.success(builderEditing ? (asDraft ? '页面修改已保存为草稿' : '自定义页面已更新并发布') : (asDraft ? '草稿已保存' : '自定义页面已创建并发布'))
   }
 
   const sunCodeValue = useMemo(() => {
@@ -452,7 +452,7 @@ export default function ResPages() {
   const columns = [
     {
       title: '页面标题', key: 'title', fixed: 'left' as const, width: 240,
-      render: (_: unknown, page: MiniProgramPage) => <Space><div className={'page-kind-icon ' + page.kind}><ShopOutlined /></div><div><Typography.Text strong>{page.title}</Typography.Text><br /><Space size={4}><Tag variant="filled" color={page.kind === 'temporary' ? 'blue' : 'default'}>{page.kind === 'temporary' ? '临时页面' : '系统页面'}</Tag><Typography.Text type="secondary" className="tiny-text">{page.componentCount} 个组件</Typography.Text></Space></div></Space>,
+      render: (_: unknown, page: MiniProgramPage) => <Space><div className={'page-kind-icon ' + page.kind}><ShopOutlined /></div><div><Typography.Text strong>{page.title}</Typography.Text><br /><Space size={4}><Tag variant="filled" color={page.kind === 'temporary' ? 'blue' : 'default'}>{page.kind === 'temporary' ? '自定义页面' : '系统页面'}</Tag><Typography.Text type="secondary" className="tiny-text">{page.componentCount} 个组件</Typography.Text></Space></div></Space>,
     },
     {
       title: '页面路径', dataIndex: 'path', width: 245,
@@ -491,21 +491,21 @@ export default function ResPages() {
 
   return <>{messageContextHolder}<div className="temp-pages">
     <div className="temp-pages-header">
-      <div><Typography.Title level={4}>小程序页面管理</Typography.Title><Typography.Text type="secondary">统一管理小程序系统页面和临时运营页面，查看流量、配置渠道与分享素材</Typography.Text></div>
-      <Button type="primary" size="large" icon={<PlusOutlined />} onClick={() => openBuilder()}>新建临时页面</Button>
+      <div><Typography.Title level={4}>自定义页面管理</Typography.Title><Typography.Text type="secondary">统一管理小程序系统页面和自定义运营页面，查看流量、配置渠道与分享素材</Typography.Text></div>
+      <Button type="primary" size="large" icon={<PlusOutlined />} onClick={() => openBuilder()}>新建自定义页面</Button>
     </div>
 
     <Row gutter={[16, 16]} className="page-metrics">
       <Col xs={12} lg={6}><Card><Statistic title="全部页面" value={metrics.total} suffix="个" prefix={<FileImageOutlined />} /></Card></Col>
       <Col xs={12} lg={6}><Card><Statistic title="已上线" value={metrics.online} suffix="个" prefix={<EyeOutlined />} /></Card></Col>
-      <Col xs={12} lg={6}><Card><Statistic title="临时页面" value={metrics.temporary} suffix="个" prefix={<SettingOutlined />} /></Card></Col>
+      <Col xs={12} lg={6}><Card><Statistic title="自定义页面" value={metrics.temporary} suffix="个" prefix={<SettingOutlined />} /></Card></Col>
       <Col xs={12} lg={6}><Card><Statistic title="累计访问量" value={metrics.pv} formatter={(value) => formatNumber(Number(value))} suffix="PV" prefix={<ShopOutlined />} /></Card></Col>
     </Row>
 
     <Card className="page-list-card" title={<Space><span>全部小程序页面</span><Tag>{filteredPages.length}</Tag></Space>}>
       <div className="page-toolbar">
         <Input allowClear prefix={<SearchOutlined />} placeholder="搜索页面标题或路径" value={keyword} onChange={(event) => setKeyword(event.target.value)} style={{ width: 280 }} />
-        <Select value={kind} onChange={setKind} style={{ width: 140 }} options={[{ value: 'all', label: '全部类型' }, { value: 'system', label: '系统页面' }, { value: 'temporary', label: '临时页面' }]} />
+        <Select value={kind} onChange={setKind} style={{ width: 140 }} options={[{ value: 'all', label: '全部类型' }, { value: 'system', label: '系统页面' }, { value: 'temporary', label: '自定义页面' }]} />
         <Select value={status} onChange={setStatus} style={{ width: 140 }} options={[{ value: 'all', label: '全部状态' }, ...Object.entries(STATUS_META).map(([value, item]) => ({ value, label: item.label }))]} />
       </div>
       <Table rowKey="id" columns={columns} dataSource={filteredPages} scroll={{ x: 1390 }} pagination={{ pageSize: 10, showTotal: (total) => '共 ' + total + ' 个页面' }} />
@@ -543,7 +543,7 @@ export default function ResPages() {
       </Space>}
     </Modal>
 
-    <Drawer open={builderOpen} onClose={() => setBuilderOpen(false)} title={<Space><span>{builderEditing ? `编辑临时页面 · ${builderEditing.title}` : '新建临时页面'}</span><Tag color="blue">可视化搭建</Tag></Space>} size="min(1380px, 98vw)"
+    <Drawer open={builderOpen} onClose={() => setBuilderOpen(false)} title={<Space><span>{builderEditing ? `编辑自定义页面 · ${builderEditing.title}` : '新建自定义页面'}</span><Tag color="blue">可视化搭建</Tag></Space>} size="min(1380px, 98vw)"
       extra={<Space><Button onClick={() => void saveNewPage(true)}>{builderEditing ? '保存修改' : '保存草稿'}</Button><Button type="primary" onClick={() => void saveNewPage(false)}>{builderEditing ? '更新并发布' : '创建并发布'}</Button></Space>} styles={{ body: { padding: 0, background: '#F3F5F8' } }}>
       <div className="page-builder">
         <aside className="builder-palette">
@@ -568,7 +568,7 @@ export default function ResPages() {
               onDragOver={(event) => { event.preventDefault(); if (event.currentTarget === event.target) setDropIndex(blocks.length) }}
               onDrop={(event) => dropOnCanvas(event, blocks.length)}>
               <CanvasDropZone index={0} active={dropIndex === 0} onDragOver={setDropIndex} onDrop={dropOnCanvas} />
-              {!blocks.some((block) => block.type !== 'subscribe') && <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={<span>将左侧组件或本地切图拖到这里<br />开始搭建临时页面</span>} />}
+              {!blocks.some((block) => block.type !== 'subscribe') && <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={<span>将左侧组件或本地切图拖到这里<br />开始搭建自定义页面</span>} />}
               {blocks.map((block, index) => block.type === 'subscribe' ? null : <Fragment key={block.id}>
                 <div className={`phone-block${selectedId === block.id ? ' selected' : ''}${draggingId === block.id ? ' is-dragging' : ''}`} draggable role="group" tabIndex={0} aria-label={`选择并拖动${block.label}`}
                   onDragStart={(event) => { event.stopPropagation(); event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData(BLOCK_DRAG_TYPE, String(block.id)); setDraggingId(block.id); setDraggingType(undefined); setSelectedId(block.id) }} onDragEnd={finishDrag}

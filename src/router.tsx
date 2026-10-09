@@ -20,7 +20,7 @@ import GrowthEffect from './pages/growth/GrowthEffect'
 // 内容管理
 import ContentArticles from './pages/content/ContentArticles'
 import ContentVideos from './pages/content/ContentVideos'
-import ContentCategories from './pages/content/ContentCategories'
+import ContentCategories, { CourseCategories } from './pages/content/ContentCategories'
 import ContentTags from './pages/content/ContentTags'
 import ContentDictionary from './pages/content/ContentDictionary'
 import ContentImport from './pages/content/ContentImport'
@@ -83,6 +83,7 @@ export const router = createBrowserRouter([
       { path: 'content/articles', element: <ContentArticles /> },
       { path: 'content/videos', element: <ContentVideos /> },
       { path: 'content/categories', element: <ContentCategories /> },
+      { path: 'content/course-categories', element: <CourseCategories /> },
       { path: 'content/tags', element: <ContentTags /> },
       { path: 'content/dictionary', element: <ContentDictionary /> },
       { path: 'content/import', element: <ContentImport /> },

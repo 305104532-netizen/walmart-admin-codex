@@ -1,11 +1,4 @@
-export const COURSE_CATEGORIES = [
-  { value: 'entry', label: '入驻必修' },
-  { value: 'operation', label: '运营进阶' },
-  { value: 'logistics', label: '物流专题' },
-  { value: 'ads', label: '广告专题' },
-] as const
-
-export type CourseCategory = typeof COURSE_CATEGORIES[number]['value']
+export type CourseCategory = string
 export type CourseRequirement = 'required' | 'elective'
 export type CourseStatus = 'draft' | 'published'
 

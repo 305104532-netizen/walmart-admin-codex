@@ -37,7 +37,8 @@ export const menuConfig: MenuNode[] = [
     children: [
       { key: '/content/articles', label: '文章管理' },
       { key: '/content/videos', label: '视频课程管理' },
-      { key: '/content/categories', label: '分类管理' },
+      { key: '/content/categories', label: '内容分类管理' },
+      { key: '/content/course-categories', label: '视频课程分类管理' },
       { key: '/content/tags', label: '内容标签管理' },
       { key: '/content/dictionary', label: '内容字典' },
       { key: '/content/import', label: '内容迁移/导入' },
@@ -77,7 +78,7 @@ export const menuConfig: MenuNode[] = [
     children: [
       { key: '/resource/popup', label: '弹窗管理' },
       { key: '/resource/editor', label: '页面编辑器' },
-      { key: '/resource/pages', label: '临时页面管理' },
+      { key: '/resource/pages', label: '自定义页面管理' },
     ],
   },
   {

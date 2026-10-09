@@ -1,21 +1,24 @@
 import { useMemo, useState } from 'react'
-import { ArrowDownOutlined, ArrowUpOutlined, EditOutlined, PlayCircleOutlined, PlusOutlined, SearchOutlined, UnorderedListOutlined } from '@ant-design/icons'
-import { Button, Drawer, Form, Image, Input, InputNumber, Modal, Segmented, Select, Space, Switch, Table, Tabs, Tag, Tooltip, Typography, message } from 'antd'
+import { ArrowDownOutlined, ArrowUpOutlined, EditOutlined, PlayCircleOutlined, PlusOutlined, SearchOutlined, SettingOutlined, UnorderedListOutlined } from '@ant-design/icons'
+import { Button, Cascader, Drawer, Form, Image, Input, InputNumber, Modal, Segmented, Select, Space, Switch, Table, Tabs, Tag, Tooltip, Typography, message } from 'antd'
+import { useNavigate } from 'react-router-dom'
 import ImageUpload from '../../components/ImageUpload'
-import { COURSE_CATEGORIES, loadCourseAlbums, saveCourseAlbums } from '../../models/courseCatalog'
+import { loadCourseAlbums, saveCourseAlbums } from '../../models/courseCatalog'
 import type { CourseAlbum, CourseCategory, CourseLesson, CourseRequirement, CourseStatus } from '../../models/courseCatalog'
+import { categoryOptions, categoryPath, isCategoryOrDescendant, loadCategories } from '../../models/contentTaxonomy'
 
-type AlbumFields = Pick<CourseAlbum, 'title' | 'category' | 'requirement' | 'description' | 'cover' | 'sortOrder'>
+type AlbumFields = Pick<CourseAlbum, 'title' | 'requirement' | 'description' | 'cover' | 'sortOrder'> & { categoryPath: string[] }
 type LessonFields = Pick<CourseLesson, 'title' | 'durationMinutes' | 'videoUrl' | 'status'> & { albumId: string }
 type LessonRow = CourseLesson & { albumId: string; albumTitle: string; category: CourseCategory; requirement: CourseRequirement }
 
-const CATEGORY_NAMES = Object.fromEntries(COURSE_CATEGORIES.map(({ value, label }) => [value, label])) as Record<CourseCategory, string>
 const REQUIREMENT_NAMES: Record<CourseRequirement, string> = { required: '必修', elective: '选修' }
 const STATUS_NAMES: Record<CourseStatus, string> = { draft: '草稿', published: '已发布' }
 const newId = (prefix: string) => `${prefix}-${crypto.randomUUID()}`
 
 export default function ContentVideos() {
+  const navigate = useNavigate()
   const [albums, setAlbums] = useState(loadCourseAlbums)
+  const [categories] = useState(() => loadCategories('course'))
   const [view, setView] = useState('albums')
   const [keyword, setKeyword] = useState('')
   const [category, setCategory] = useState<CourseCategory>()
@@ -30,16 +33,19 @@ export default function ContentVideos() {
   const [albumForm] = Form.useForm<AlbumFields>()
   const [lessonForm] = Form.useForm<LessonFields>()
 
+  const categoryChoices = useMemo(() => categoryOptions(categories), [categories])
+  const categoryLabel = (id: string) => categoryPath(categories, id).map((item) => item.name).join(' / ') || id
+  const matchesCategory = (id: string) => !category || isCategoryOrDescendant(categories, id, category)
   const activeAlbum = albums.find((album) => album.id === activeAlbumId)
   const orderedAlbums = useMemo(() => [...albums].sort((left, right) => left.sortOrder - right.sortOrder), [albums])
   const allLessons = useMemo<LessonRow[]>(() => orderedAlbums.flatMap((album) => album.lessons.map((lesson) => ({
     ...lesson, albumId: album.id, albumTitle: album.title, category: album.category, requirement: album.requirement,
   }))), [orderedAlbums])
-  const matchesFilters = (album: CourseAlbum) => (!category || album.category === category)
+  const matchesFilters = (album: CourseAlbum) => matchesCategory(album.category)
     && (!requirement || album.requirement === requirement) && (!status || album.status === status)
     && (!keyword || `${album.title}${album.description}`.toLowerCase().includes(keyword.trim().toLowerCase()))
   const visibleAlbums = orderedAlbums.filter(matchesFilters)
-  const visibleLessons = allLessons.filter((lesson) => (!category || lesson.category === category)
+  const visibleLessons = allLessons.filter((lesson) => matchesCategory(lesson.category)
     && (!requirement || lesson.requirement === requirement) && (!status || lesson.status === status)
     && (!keyword || `${lesson.title}${lesson.albumTitle}`.toLowerCase().includes(keyword.trim().toLowerCase())))
 
@@ -58,8 +64,10 @@ export default function ContentVideos() {
   const openAlbumEditor = (album?: CourseAlbum) => {
     setEditingAlbum(album)
     albumForm.resetFields()
-    albumForm.setFieldsValue(album ?? {
-      title: '', category: 'entry', requirement: 'required', description: '', cover: '',
+    albumForm.setFieldsValue(album ? {
+      ...album, categoryPath: categoryPath(categories, album.category).map((item) => item.id),
+    } : {
+      title: '', categoryPath: categoryChoices[0] ? [categoryChoices[0].value] : [], requirement: 'required', description: '', cover: '',
       sortOrder: Math.max(0, ...albums.map((item) => item.sortOrder)) + 1,
     })
     setAlbumOpen(true)
@@ -68,9 +76,12 @@ export default function ContentVideos() {
   const saveAlbum = async () => {
     let values: AlbumFields
     try { values = await albumForm.validateFields() } catch { return }
+    const { categoryPath: selectedPath, ...albumValues } = values
+    const selectedCategory = selectedPath.at(-1)
+    if (!selectedCategory) return
     const next = editingAlbum
-      ? albums.map((album) => album.id === editingAlbum.id ? { ...album, ...values } : album)
-      : [...albums, { ...values, id: newId('album'), learners: 0, status: 'draft' as const, lessons: [] }]
+      ? albums.map((album) => album.id === editingAlbum.id ? { ...album, ...albumValues, category: selectedCategory } : album)
+      : [...albums, { ...albumValues, category: selectedCategory, id: newId('album'), learners: 0, status: 'draft' as const, lessons: [] }]
     if (commit(next, editingAlbum ? '专辑已更新' : '专辑已创建')) setAlbumOpen(false)
   }
 
@@ -123,7 +134,7 @@ export default function ContentVideos() {
 
   const albumColumns = [
     { title: '课程专辑', key: 'album', width: 280, render: (_: unknown, album: CourseAlbum) => <Space align="start" style={{ flexWrap: 'nowrap' }}><Image src={album.cover} alt={`${album.title}封面`} width={64} height={48} preview={false} style={{ objectFit: 'cover', borderRadius: 4 }} /><Space orientation="vertical" size={2}><Typography.Text strong>{album.title}</Typography.Text><Typography.Text type="secondary" ellipsis style={{ width: 164, fontSize: 12 }}>{album.description}</Typography.Text></Space></Space> },
-    { title: '分类', dataIndex: 'category', width: 105, render: (value: CourseCategory) => CATEGORY_NAMES[value] },
+    { title: '分类', dataIndex: 'category', width: 105, render: (value: CourseCategory) => <Tooltip title={categoryLabel(value)}><Typography.Text ellipsis style={{ width: 76 }}>{categoryLabel(value)}</Typography.Text></Tooltip> },
     { title: '学习属性', dataIndex: 'requirement', width: 90, render: (value: CourseRequirement) => <Tag color={value === 'required' ? 'red' : 'blue'}>{REQUIREMENT_NAMES[value]}</Tag> },
     { title: '课时', dataIndex: 'lessons', width: 70, render: (lessons: CourseLesson[]) => `${lessons.filter((lesson) => lesson.status === 'published').length} / ${lessons.length}` },
     { title: '学习人数', dataIndex: 'learners', width: 88, render: (value: number) => value.toLocaleString('zh-CN') },
@@ -135,7 +146,7 @@ export default function ContentVideos() {
   const lessonColumns = [
     { title: '视频课时', dataIndex: 'title', width: 220, ellipsis: true },
     { title: '所属专辑', dataIndex: 'albumTitle', width: 140, ellipsis: true },
-    { title: '分类', dataIndex: 'category', width: 100, render: (value: CourseCategory) => CATEGORY_NAMES[value] },
+    { title: '分类', dataIndex: 'category', width: 100, render: (value: CourseCategory) => <Tooltip title={categoryLabel(value)}><Typography.Text ellipsis style={{ width: 72 }}>{categoryLabel(value)}</Typography.Text></Tooltip> },
     { title: '学习属性', dataIndex: 'requirement', width: 80, render: (value: CourseRequirement) => <Tag color={value === 'required' ? 'red' : 'blue'}>{REQUIREMENT_NAMES[value]}</Tag> },
     { title: '时长', dataIndex: 'durationMinutes', width: 90, render: (value: number) => <span style={{ whiteSpace: 'nowrap' }}>{value} 分钟</span> },
     { title: '视频', dataIndex: 'videoUrl', width: 100, render: (value: string) => <Tag color={value ? 'green' : 'default'}>{value ? '已配置' : '未配置'}</Tag> },
@@ -148,11 +159,12 @@ export default function ContentVideos() {
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', justifyContent: 'space-between' }}>
       <Space wrap>
         <Input allowClear prefix={<SearchOutlined />} placeholder="搜索课程或专辑" value={keyword} onChange={(event) => setKeyword(event.target.value)} style={{ width: 230 }} />
-        <Select allowClear placeholder="课程分类" value={category} onChange={setCategory} options={[...COURSE_CATEGORIES]} style={{ width: 140 }} />
+        <Cascader allowClear changeOnSelect showSearch placeholder="课程分类" value={category ? categoryPath(categories, category).map((item) => item.id) : []}
+          onChange={(values) => setCategory(values.length ? String(values[values.length - 1]) : undefined)} options={categoryChoices} style={{ width: 160 }} />
         <Select allowClear placeholder="学习属性" value={requirement} onChange={setRequirement} options={[{ value: 'required', label: '必修' }, { value: 'elective', label: '选修' }]} style={{ width: 120 }} />
         <Select allowClear placeholder="发布状态" value={status} onChange={setStatus} options={[{ value: 'published', label: '已发布' }, { value: 'draft', label: '草稿' }]} style={{ width: 120 }} />
       </Space>
-      <Button type="primary" icon={<PlusOutlined />} onClick={() => view === 'albums' ? openAlbumEditor() : openLessonEditor()}>{view === 'albums' ? '新建专辑' : '新增课时'}</Button>
+      <Space wrap><Button icon={<SettingOutlined />} onClick={() => navigate('/content/course-categories')}>管理分类</Button><Button type="primary" icon={<PlusOutlined />} onClick={() => view === 'albums' ? openAlbumEditor() : openLessonEditor()}>{view === 'albums' ? '新建专辑' : '新增课时'}</Button></Space>
     </div>
     <Tabs activeKey={view} onChange={setView} items={[{ key: 'albums', label: '课程专辑' }, { key: 'lessons', label: '视频课时' }]} style={{ marginBottom: -16 }} />
     {view === 'albums'
@@ -163,7 +175,7 @@ export default function ContentVideos() {
       <Form form={albumForm} layout="vertical">
         <Form.Item label="专辑名称" name="title" rules={[{ required: true, whitespace: true, message: '请输入专辑名称' }]}><Input maxLength={60} /></Form.Item>
         <Space wrap size={16} align="start">
-          <Form.Item label="课程分类" name="category" rules={[{ required: true }]}><Select options={[...COURSE_CATEGORIES]} style={{ width: 195 }} /></Form.Item>
+          <Form.Item label="课程分类" name="categoryPath" rules={[{ required: true, message: '请选择课程分类' }]}><Cascader changeOnSelect showSearch options={categoryChoices} style={{ width: 195 }} /></Form.Item>
           <Form.Item label="学习属性" name="requirement" rules={[{ required: true }]}><Segmented options={[{ label: '必修课程', value: 'required' }, { label: '选修课程', value: 'elective' }]} /></Form.Item>
           <Form.Item label="展示顺序" name="sortOrder" rules={[{ required: true }]}><InputNumber min={1} precision={0} style={{ width: 100 }} /></Form.Item>
         </Space>
@@ -174,7 +186,7 @@ export default function ContentVideos() {
 
     <Drawer open={!!activeAlbum} onClose={() => setActiveAlbumId(undefined)} title={activeAlbum?.title ?? '课时管理'} size="min(900px, 96vw)" extra={activeAlbum && <Button type="primary" icon={<PlusOutlined />} onClick={() => openLessonEditor(activeAlbum.id)}>新增课时</Button>}>
       {activeAlbum && <Space orientation="vertical" size={16} style={{ width: '100%' }}>
-        <Space wrap><Tag>{CATEGORY_NAMES[activeAlbum.category]}</Tag><Tag color={activeAlbum.requirement === 'required' ? 'red' : 'blue'}>{REQUIREMENT_NAMES[activeAlbum.requirement]}</Tag><Typography.Text type="secondary">{activeAlbum.lessons.length} 节课时</Typography.Text></Space>
+        <Space wrap><Tag>{categoryLabel(activeAlbum.category)}</Tag><Tag color={activeAlbum.requirement === 'required' ? 'red' : 'blue'}>{REQUIREMENT_NAMES[activeAlbum.requirement]}</Tag><Typography.Text type="secondary">{activeAlbum.lessons.length} 节课时</Typography.Text></Space>
         <Table rowKey="id" size="small" pagination={false} dataSource={activeAlbum.lessons} scroll={{ x: 680 }} columns={[
           { title: '顺序', key: 'order', width: 64, render: (_: unknown, __: CourseLesson, index: number) => index + 1 },
           { title: '课时标题', dataIndex: 'title', ellipsis: true },

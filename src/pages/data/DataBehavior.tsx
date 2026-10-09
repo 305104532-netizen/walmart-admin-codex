@@ -57,7 +57,7 @@ export default function DataBehavior() {
           columns={[
             { title: '页面名称', dataIndex: 'title', width: 250 },
             { title: '页面路径', dataIndex: 'path', width: 300, render: (value: string) => <Typography.Text code copyable={{ text: value }}>{value}</Typography.Text> },
-            { title: '页面类型', dataIndex: 'kind', width: 120, render: (value: string) => <Tag color={value === 'temporary' ? 'blue' : 'default'}>{value === 'temporary' ? '临时页面' : '系统页面'}</Tag> },
+            { title: '页面类型', dataIndex: 'kind', width: 120, render: (value: string) => <Tag color={value === 'temporary' ? 'blue' : 'default'}>{value === 'temporary' ? '自定义页面' : '系统页面'}</Tag> },
             { title: '访问量 PV', dataIndex: 'pv', width: 130, sorter: (left, right) => left.pv - right.pv, render: (value: number) => value.toLocaleString('zh-CN') },
             { title: '访客数 UV', dataIndex: 'uv', width: 130, sorter: (left, right) => left.uv - right.uv, render: (value: number) => value.toLocaleString('zh-CN') },
             { title: 'PV 占比', key: 'share', width: 120, render: (_: unknown, page) => `${(page.pv / totalPageViews * 100).toFixed(1)}%` },
