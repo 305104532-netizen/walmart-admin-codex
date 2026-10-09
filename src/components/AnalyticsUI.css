@@ -1,0 +1,95 @@
+.analysis-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.analysis-header-copy { min-width: 0; }
+.analysis-title-line { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.analysis-title-line h3.ant-typography { margin: 0; color: var(--admin-text); font-size: 24px; line-height: 1.3; }
+.analysis-title-line .ant-tag { margin: 0; font-weight: 500; }
+.analysis-header-copy > .ant-typography { display: block; margin-top: 5px; font-size: 13px; }
+.analysis-header-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; }
+.analysis-header-actions .ant-segmented { background: #e9eef3; }
+.analysis-header-actions .ant-segmented-item { min-width: 78px; }
+.analysis-nav { margin-bottom: 16px; }
+.analysis-nav .ant-tabs-nav { margin-bottom: 0; }
+
+.analysis-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.analysis-metric {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  min-height: 124px;
+  padding: 18px 20px 15px;
+  border: 1px solid var(--admin-border-soft);
+  border-radius: 8px;
+  background: var(--admin-surface);
+  box-shadow: 0 1px 2px rgba(16, 30, 54, .03);
+  color: var(--admin-text);
+  text-align: left;
+}
+.analysis-metric-button { width: 100%; cursor: pointer; transition: border-color .16s, background .16s; }
+.analysis-metric-button:hover { border-color: #91bce0; background: #fbfdff; }
+.analysis-metric-label { color: var(--admin-text-secondary); font-size: 13px; font-weight: 600; }
+.analysis-metric-value { display: block; margin-top: 11px; font-size: 27px; font-weight: 700; line-height: 1.1; white-space: nowrap; }
+.analysis-metric-value small { margin-left: 4px; color: var(--admin-text-secondary); font-size: 13px; font-weight: 500; }
+.analysis-metric-foot { display: flex; align-items: center; gap: 6px; margin-top: auto; padding-top: 12px; color: var(--admin-text-secondary); font-size: 12px; }
+.analysis-metric-foot .is-positive { color: var(--admin-success); font-weight: 700; }
+.analysis-metric-foot .is-negative { color: var(--admin-error); font-weight: 700; }
+
+.analysis-panel {
+  min-width: 0;
+  border: 1px solid var(--admin-border-soft);
+  border-radius: 8px;
+  background: var(--admin-surface);
+  box-shadow: 0 1px 2px rgba(16, 30, 54, .03);
+}
+.analysis-panel-body { padding: 4px 18px 18px; }
+.analysis-section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 17px 18px 12px;
+}
+.analysis-section-heading > div:first-child { display: grid; gap: 3px; }
+.analysis-section-heading h2 { margin: 0; font-size: 15px; font-weight: 700; line-height: 1.4; }
+.analysis-section-heading span { color: var(--admin-text-secondary); font-size: 12px; }
+.analysis-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr); gap: 16px; margin-bottom: 16px; }
+.analysis-grid > * { min-width: 0; }
+.analysis-panel .ant-table-wrapper { padding: 0 16px 16px; }
+.analysis-panel .ant-table { border: none; border-top: 1px solid var(--admin-border-soft); border-radius: 0; }
+.analysis-panel .ant-table-thead > tr > th { background: #f7f9fb; }
+.analysis-panel .ant-table-tbody > tr > td { vertical-align: middle; }
+.analysis-panel .ant-pagination { margin-bottom: 0; }
+
+@media (max-width: 1200px) {
+  .analysis-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .analysis-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 650px) {
+  .analysis-header { align-items: stretch; flex-direction: column; }
+  .analysis-header-actions { justify-content: stretch; }
+  .analysis-header-actions .ant-segmented { width: 100%; }
+  .analysis-header-actions .ant-segmented-group { display: flex; }
+  .analysis-header-actions .ant-segmented-item { flex: 1; }
+  .analysis-header-actions .ant-btn { flex: 1; }
+  .analysis-title-line h3.ant-typography { font-size: 21px; }
+  .analysis-metrics { grid-template-columns: 1fr; }
+  .analysis-metric { min-height: 104px; padding: 15px 17px; }
+  .analysis-metric-value { margin-top: 8px; font-size: 24px; }
+  .analysis-section-heading { padding: 15px 14px 10px; }
+  .analysis-panel-body { padding: 0 12px 12px; }
+  .analysis-panel .ant-table-wrapper { padding-inline: 10px; }
+}

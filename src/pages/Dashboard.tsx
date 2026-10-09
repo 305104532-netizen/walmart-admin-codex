@@ -1,113 +1,97 @@
 import { useState } from 'react'
-import { Row, Col, Card, Statistic, List, Badge, Button, Segmented, Space, Typography } from 'antd'
-import { ArrowUpOutlined, ArrowDownOutlined, ReloadOutlined } from '@ant-design/icons'
+import { Button, Tag } from 'antd'
+import { ArrowRightOutlined } from '@ant-design/icons'
+import type { EChartsOption } from 'echarts'
 import { useNavigate } from 'react-router-dom'
 import EChart from '../components/EChart'
-import { lastNDates } from '../mock/util'
+import { AnalyticsHeader, MetricCard, SectionHeading } from '../components/AnalyticsUI'
+import { analyticsWindow, changeFrom, formatCount, rate, totalOf } from '../mock/analytics'
+import type { AnalyticsPeriod } from '../mock/analytics'
 import './Dashboard.css'
 
-const stats = [
-  { title: '总卖家数', value: 12456, change: 3.2, up: true, to: '/growth/sellers' },
-  { title: '今日新增', value: 28, change: 12, up: true, to: '/growth/sellers' },
-  { title: '周活跃率', value: 34.5, suffix: '%', change: 2.1, up: false, to: '/data/behavior' },
-  { title: '入驻转化率', value: 18.2, suffix: '%', change: 5.4, up: true, to: '/register/trace' },
-]
-
-const statColors = ['#0071CE', '#25864A', '#B86E00', '#0071CE']
+const TODOS = [
+  { label: '卖家报名待审核', count: 12, to: '/activity/signup', tone: 'warning' },
+  { label: '超 7 天未学习卖家', count: 28, to: '/register/remind', tone: 'neutral' },
+  { label: '待绑定 PID 的新卖家', count: 5, to: '/growth/sellers', tone: 'success' },
+] as const
 
 export default function Dashboard() {
   const navigate = useNavigate()
-  const [period, setPeriod] = useState<number>(7)
-  const [refreshKey, setRefreshKey] = useState(0)
-  const dates = lastNDates(period)
-  const pv = dates.map((_, index) => 1000 + ((refreshKey * 137 + index * 173) % 800))
-  const uv = dates.map((_, index) => 400 + ((refreshKey * 83 + index * 97) % 300))
+  const [period, setPeriod] = useState<AnalyticsPeriod>(7)
+  const { current, previous } = analyticsWindow(period)
+  const pv = totalOf(current, 'pv')
+  const uv = totalOf(current, 'uv')
+  const leads = totalOf(current, 'leads')
+  const registrations = totalOf(current, 'registrations')
+  const conversion = rate(registrations, leads)
+  const previousConversion = rate(totalOf(previous, 'registrations'), totalOf(previous, 'leads'))
 
-  const trendOption = {
+  const trendOption: EChartsOption = {
+    color: ['#0071ce', '#25864a'],
     tooltip: { trigger: 'axis' },
-    legend: { data: ['PV', 'UV'] },
-    grid: { left: 40, right: 20, top: 40, bottom: 30 },
-    xAxis: { type: 'category', data: dates },
-    yAxis: [{ type: 'value', name: 'PV' }, { type: 'value', name: 'UV' }],
+    legend: { bottom: 0, icon: 'roundRect', itemWidth: 12, itemHeight: 7 },
+    grid: { left: 52, right: 18, top: 18, bottom: 48 },
+    xAxis: { type: 'category', boundaryGap: false, data: current.map((day) => day.date), axisLabel: { interval: 'auto', hideOverlap: true }, axisTick: { show: false } },
+    yAxis: { type: 'value', splitLine: { lineStyle: { color: '#e8edf2', type: 'dashed' } } },
     series: [
-      { name: 'PV', type: 'line', smooth: true, data: pv, itemStyle: { color: '#1A56DB' }, areaStyle: { opacity: 0.1 } },
-      { name: 'UV', type: 'line', smooth: true, yAxisIndex: 1, data: uv, itemStyle: { color: '#10B981' } },
+      { name: 'PV', type: 'line', smooth: true, symbol: 'none', data: current.map((day) => day.pv), lineStyle: { width: 3 }, areaStyle: { opacity: .08 } },
+      { name: 'UV', type: 'line', smooth: true, symbol: 'none', data: current.map((day) => day.uv), lineStyle: { width: 2 } },
     ],
   }
 
-  const pieOption = {
-    tooltip: { trigger: 'item' },
-    legend: { bottom: 0 },
-    series: [{
-      type: 'pie', radius: ['45%', '70%'], center: ['50%', '45%'],
-      data: [
-        { value: 5230, name: '未入驻', itemStyle: { color: '#9CA3AF' } },
-        { value: 1860, name: '审核中', itemStyle: { color: '#F59E0B' } },
-        { value: 5366, name: '已上线', itemStyle: { color: '#10B981' } },
-      ],
-    }],
-  }
-
-  const todos = [
-    { color: 'red', text: '12个卖家报名待审核', to: '/activity/signup' },
-    { color: 'gold', text: '28个卖家超7天未学习', to: '/register/remind' },
-    { color: 'green', text: '5个新入驻卖家待绑定PID', to: '/growth/sellers' },
+  const steps = [
+    { label: '小程序访客', value: uv },
+    { label: '进入入驻页', value: leads },
+    { label: '提交入驻申请', value: Math.round(leads * .55) },
+    { label: '完成入驻', value: registrations },
   ]
 
-  return (
-    <div className="dashboard-page">
-      <div className="dashboard-heading">
-        <div>
-          <Typography.Title level={2}>运营概览</Typography.Title>
-          <Typography.Text type="secondary">实时掌握商家入驻、活跃与内容运营情况</Typography.Text>
-        </div>
-        <Button icon={<ReloadOutlined />} onClick={() => setRefreshKey((key) => key + 1)}>刷新数据</Button>
-      </div>
-      <Row gutter={[16, 16]} className="dashboard-stat-grid">
-        {stats.map((s, index) => (
-          <Col xs={24} sm={12} xl={6} key={s.title}>
-            <Card className="dashboard-stat-card" hoverable onClick={() => navigate(s.to)} styles={{ body: { padding: 20 } }}>
-              <div className="dashboard-stat-label">{s.title}</div>
-              <Statistic
-                value={s.value}
-                suffix={s.suffix}
-                valueStyle={{ color: statColors[index], fontWeight: 750 }}
-              />
-              <div className={`dashboard-stat-change ${s.up ? 'is-up' : 'is-down'}`}>
-                {s.up ? <ArrowUpOutlined /> : <ArrowDownOutlined />} {s.change}% 较上期
-              </div>
-            </Card>
-          </Col>
-        ))}
-      </Row>
+  return <div className="dashboard-page">
+    <AnalyticsHeader title="运营概览" subtitle="小程序流量、入驻转化与待处理事项" period={period} onPeriodChange={setPeriod}
+      action={<Button icon={<ArrowRightOutlined />} onClick={() => navigate('/data/overview')}>流量分析</Button>} />
 
-      <Row gutter={[16, 16]} className="dashboard-chart-grid">
-        <Col xs={24} xl={16}>
-          <Card
-            className="dashboard-panel-card"
-            title={<span className="dashboard-card-title">PV / UV 趋势</span>}
-            extra={<Segmented options={[{ label: '7天', value: 7 }, { label: '30天', value: 30 }]} value={period} onChange={(v) => setPeriod(v as number)} />}
-          >
-            <EChart option={trendOption} />
-          </Card>
-        </Col>
-        <Col xs={24} xl={8}>
-          <Card className="dashboard-panel-card" title={<span className="dashboard-card-title">卖家状态分布</span>}>
-            <EChart option={pieOption} />
-          </Card>
-        </Col>
-      </Row>
-
-      <Card className="dashboard-panel-card dashboard-todo-card" title={<span className="dashboard-card-title">待办事项</span>}>
-        <List
-          dataSource={todos}
-          renderItem={(item) => (
-            <List.Item actions={[<Button key={item.to} type="link" onClick={() => navigate(item.to)}>去处理</Button>]}> 
-              <Space><Badge color={item.color} />{item.text}</Space>
-            </List.Item>
-          )}
-        />
-      </Card>
+    <div className="analysis-metrics">
+      <MetricCard label="小程序访问量" value={pv} change={changeFrom(pv, totalOf(previous, 'pv'))} onClick={() => navigate('/data/overview')} />
+      <MetricCard label="访问人数" value={uv} change={changeFrom(uv, totalOf(previous, 'uv'))} onClick={() => navigate('/data/overview')} />
+      <MetricCard label="入驻线索" value={leads} change={changeFrom(leads, totalOf(previous, 'leads'))} onClick={() => navigate('/register/trace')} />
+      <MetricCard label="入驻转化率" value={conversion} unit="%" precision={1} change={changeFrom(conversion, previousConversion)} onClick={() => navigate('/register/trace')} />
     </div>
-  )
+
+    <div className="analysis-grid">
+      <section className="analysis-panel" aria-label="访问趋势">
+        <SectionHeading title="访问趋势" detail={`${current[0].date} 至 ${current.at(-1)?.date}`} />
+        <div className="analysis-panel-body"><EChart option={trendOption} height={270} /></div>
+      </section>
+      <section className="analysis-panel" aria-label="入驻转化路径">
+        <SectionHeading title="入驻转化路径" detail="按当前时间范围统计" action={<Button type="link" size="small" onClick={() => navigate('/data/behavior')}>查看行为分析 <ArrowRightOutlined /></Button>} />
+        <div className="home-funnel">
+          {steps.map((step, index) => <div className="home-funnel-row" key={step.label}>
+            <div className="home-funnel-row-head"><span><b>{String(index + 1).padStart(2, '0')}</b>{step.label}</span><strong>{formatCount(step.value)}</strong></div>
+            <div className="home-funnel-track"><div style={{ width: `${rate(step.value, uv)}%` }} /></div>
+          </div>)}
+        </div>
+      </section>
+    </div>
+
+    <section className="analysis-panel home-seller" aria-label="商家增长快照">
+      <SectionHeading title="商家增长快照" detail="存量与当前运营状态" action={<Button type="link" size="small" onClick={() => navigate('/growth/sellers')}>卖家管理 <ArrowRightOutlined /></Button>} />
+      <div className="home-seller-grid">
+        <div><span>总卖家数</span><strong>12,456</strong><small>当前存量</small></div>
+        <div><span>今日新增</span><strong>28</strong><small>较昨日 +12.0%</small></div>
+        <div><span>周活跃率</span><strong>34.5<em>%</em></strong><small>较上周 -2.1%</small></div>
+      </div>
+    </section>
+
+    <section className="analysis-panel home-todo" aria-label="运营待办">
+      <SectionHeading title="运营待办" detail="需要继续处理的业务事项" action={<Tag>{TODOS.length} 项</Tag>} />
+      <div className="home-todo-list">
+        {TODOS.map((item) => <button type="button" className="home-todo-item" key={item.label} onClick={() => navigate(item.to)}>
+          <span className={`home-todo-dot is-${item.tone}`} aria-hidden="true" />
+          <span>{item.label}</span>
+          <strong>{item.count}</strong>
+          <ArrowRightOutlined aria-hidden="true" />
+        </button>)}
+      </div>
+    </section>
+  </div>
 }
